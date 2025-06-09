@@ -8,6 +8,7 @@ import { AppProvider } from "./contexts/AppContext";
 import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { Teams } from "./pages/Teams";
+import { TeamDetails } from "./pages/TeamDetails";
 import { People } from "./pages/People";
 import { Licenses } from "./pages/Licenses";
 import { Assets } from "./pages/Assets";

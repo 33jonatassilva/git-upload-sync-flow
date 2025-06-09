@@ -1,4 +1,3 @@
-
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
@@ -29,22 +28,6 @@ export const initDatabase = () => {
     )
   `);
 
-  // Tabela de pessoas
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS people (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      email TEXT UNIQUE NOT NULL,
-      position TEXT,
-      department TEXT,
-      organization_id TEXT NOT NULL,
-      status TEXT DEFAULT 'active',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (organization_id) REFERENCES organizations(id)
-    )
-  `);
-
   // Tabela de teams
   db.exec(`
     CREATE TABLE IF NOT EXISTS teams (
@@ -57,6 +40,24 @@ export const initDatabase = () => {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (organization_id) REFERENCES organizations(id),
       FOREIGN KEY (manager_id) REFERENCES people(id)
+    )
+  `);
+
+  // Tabela de pessoas
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS people (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      position TEXT,
+      department TEXT,
+      organization_id TEXT NOT NULL,
+      team_id TEXT,
+      status TEXT DEFAULT 'active',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations(id),
+      FOREIGN KEY (team_id) REFERENCES teams(id)
     )
   `);
 
