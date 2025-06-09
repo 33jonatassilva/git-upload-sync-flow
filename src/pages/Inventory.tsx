@@ -1,10 +1,13 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { mockAssets } from '@/data/mockData';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { assetsService } from '@/services/assetsService';
+import { useApp } from '@/contexts/AppContext';
+import { Asset } from '@/types';
 import { 
   Package, 
   Search, 
@@ -17,18 +20,61 @@ import {
   DollarSign,
   Filter
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export const Inventory = () => {
+  const { currentOrganization, people } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
+  const [inventoryAssets, setInventoryAssets] = useState<Asset[]>([]);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [selectedPersonId, setSelectedPersonId] = useState('');
   
-  // Filter only available assets for inventory
-  const inventoryAssets = mockAssets.filter(asset => asset.status === 'available');
-  
+  // Load available assets when organization changes
+  useEffect(() => {
+    if (currentOrganization) {
+      loadInventoryAssets();
+    }
+  }, [currentOrganization]);
+
+  const loadInventoryAssets = () => {
+    if (!currentOrganization) return;
+    const assets = assetsService.getAvailable(currentOrganization.id);
+    setInventoryAssets(assets);
+  };
+
   const filteredAssets = inventoryAssets.filter(asset =>
     asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     asset.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
     asset.type.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleAssignAsset = (asset: Asset) => {
+    setSelectedAsset(asset);
+    setSelectedPersonId('');
+    setIsAssignDialogOpen(true);
+  };
+
+  const handleConfirmAssignment = () => {
+    if (!selectedAsset || !selectedPersonId) {
+      toast.error('Selecione uma pessoa para atribuir o ativo');
+      return;
+    }
+
+    const person = people.find(p => p.id === selectedPersonId);
+    if (!person) {
+      toast.error('Pessoa não encontrada');
+      return;
+    }
+
+    assetsService.assignToUser(selectedAsset.id, selectedPersonId);
+    toast.success(`Ativo "${selectedAsset.name}" atribuído para ${person.name}`);
+    
+    loadInventoryAssets();
+    setIsAssignDialogOpen(false);
+    setSelectedAsset(null);
+    setSelectedPersonId('');
+  };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -85,6 +131,18 @@ export const Inventory = () => {
         return 'N/A';
     }
   };
+
+  if (!currentOrganization) {
+    return (
+      <div className="text-center py-12">
+        <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Selecione uma organização</h3>
+        <p className="text-muted-foreground">
+          Você precisa selecionar uma organização para gerenciar o estoque.
+        </p>
+      </div>
+    );
+  }
 
   // Calculate stats
   const notebooks = inventoryAssets.filter(a => a.type === 'notebook');
@@ -186,6 +244,52 @@ export const Inventory = () => {
         </CardContent>
       </Card>
 
+      {/* Assignment Dialog */}
+      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alocar Ativo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedAsset && (
+              <div className="p-4 bg-muted rounded-lg">
+                <h4 className="font-medium">{selectedAsset.name}</h4>
+                <p className="text-sm text-muted-foreground">
+                  {getTypeLabel(selectedAsset.type)} - {selectedAsset.serialNumber}
+                </p>
+              </div>
+            )}
+            
+            <div>
+              <Label htmlFor="person">Selecionar Pessoa</Label>
+              <select
+                id="person"
+                className="w-full p-2 border rounded-md"
+                value={selectedPersonId}
+                onChange={(e) => setSelectedPersonId(e.target.value)}
+              >
+                <option value="">Selecione uma pessoa</option>
+                {people
+                  .filter(p => p.organizationId === currentOrganization?.id && p.status === 'active')
+                  .map((person) => (
+                    <option key={person.id} value={person.id}>
+                      {person.name} - {person.position}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2 mt-4">
+            <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmAssignment}>
+              Alocar Ativo
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Empty State */}
       {filteredAssets.length === 0 && (
         <Card>
@@ -257,7 +361,11 @@ export const Inventory = () => {
 
                   {/* Action Buttons */}
                   <div className="pt-4 border-t">
-                    <Button className="w-full" size="sm">
+                    <Button 
+                      className="w-full" 
+                      size="sm"
+                      onClick={() => handleAssignAsset(asset)}
+                    >
                       <User className="w-4 h-4 mr-2" />
                       Alocar para Pessoa
                     </Button>

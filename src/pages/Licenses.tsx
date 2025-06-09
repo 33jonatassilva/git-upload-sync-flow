@@ -1,10 +1,16 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { mockLicenses } from '@/data/mockData';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { licensesService, CreateLicenseData, UpdateLicenseData } from '@/services/licensesService';
+import { useApp } from '@/contexts/AppContext';
+import { License } from '@/types';
 import { 
   Shield, 
   Plus, 
@@ -17,9 +23,113 @@ import {
   Edit,
   Trash2
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export const Licenses = () => {
-  const [licenses] = useState(mockLicenses);
+  const { currentOrganization } = useApp();
+  const [licenses, setLicenses] = useState<License[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingLicense, setEditingLicense] = useState<License | null>(null);
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    expirationDate: '',
+    totalQuantity: '',
+    cost: '',
+    vendor: '',
+  });
+
+  // Load licenses when organization changes
+  useEffect(() => {
+    if (currentOrganization) {
+      loadLicenses();
+    }
+  }, [currentOrganization]);
+
+  const loadLicenses = () => {
+    if (!currentOrganization) return;
+    const licenseData = licensesService.getAll(currentOrganization.id);
+    setLicenses(licenseData);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      description: '',
+      expirationDate: '',
+      totalQuantity: '',
+      cost: '',
+      vendor: '',
+    });
+  };
+
+  const handleSubmit = () => {
+    if (!formData.name.trim() || !formData.expirationDate || !formData.totalQuantity) {
+      toast.error('Nome, data de vencimento e quantidade total são obrigatórios');
+      return;
+    }
+
+    if (!currentOrganization) {
+      toast.error('Selecione uma organização primeiro');
+      return;
+    }
+
+    if (editingLicense) {
+      // Edit license
+      const updateData: UpdateLicenseData = {
+        name: formData.name,
+        description: formData.description,
+        expirationDate: formData.expirationDate,
+        totalQuantity: parseInt(formData.totalQuantity),
+        cost: parseFloat(formData.cost) || undefined,
+        vendor: formData.vendor,
+      };
+      
+      licensesService.update(editingLicense.id, updateData);
+      toast.success('Licença atualizada com sucesso!');
+    } else {
+      // Create new license
+      const createData: CreateLicenseData = {
+        name: formData.name,
+        description: formData.description,
+        expirationDate: formData.expirationDate,
+        totalQuantity: parseInt(formData.totalQuantity),
+        cost: parseFloat(formData.cost) || undefined,
+        vendor: formData.vendor,
+        organizationId: currentOrganization.id,
+      };
+      
+      licensesService.create(createData);
+      toast.success('Licença criada com sucesso!');
+    }
+
+    loadLicenses();
+    resetForm();
+    setEditingLicense(null);
+    setIsDialogOpen(false);
+  };
+
+  const handleEdit = (license: License) => {
+    setEditingLicense(license);
+    setFormData({
+      name: license.name,
+      description: license.description || '',
+      expirationDate: license.expirationDate,
+      totalQuantity: license.totalQuantity.toString(),
+      cost: license.cost?.toString() || '',
+      vendor: license.vendor || '',
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (licenseId: string) => {
+    if (window.confirm('Tem certeza que deseja excluir esta licença?')) {
+      licensesService.delete(licenseId);
+      loadLicenses();
+      toast.success('Licença excluída com sucesso!');
+    }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -60,6 +170,18 @@ export const Licenses = () => {
     }
   };
 
+  if (!currentOrganization) {
+    return (
+      <div className="text-center py-12">
+        <Shield className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Selecione uma organização</h3>
+        <p className="text-muted-foreground">
+          Você precisa selecionar uma organização para gerenciar licenças.
+        </p>
+      </div>
+    );
+  }
+
   const activeLicenses = licenses.filter(l => l.status === 'active');
   const expiringLicenses = licenses.filter(l => l.status === 'expiring_soon');
   const expiredLicenses = licenses.filter(l => l.status === 'expired');
@@ -72,10 +194,95 @@ export const Licenses = () => {
           <h1 className="text-3xl font-bold text-foreground">Licenças</h1>
           <p className="text-muted-foreground">Gerencie as licenças de software da empresa</p>
         </div>
-        <Button className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Nova Licença
-        </Button>
+        
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button 
+              className="flex items-center gap-2"
+              onClick={() => {
+                setEditingLicense(null);
+                resetForm();
+              }}
+            >
+              <Plus className="w-4 h-4" />
+              Nova Licença
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {editingLicense ? 'Editar Licença' : 'Nova Licença'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="name">Nome *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Nome da licença"
+                />
+              </div>
+              <div>
+                <Label htmlFor="vendor">Fornecedor</Label>
+                <Input
+                  id="vendor"
+                  value={formData.vendor}
+                  onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
+                  placeholder="Nome do fornecedor"
+                />
+              </div>
+              <div>
+                <Label htmlFor="expirationDate">Data de Vencimento *</Label>
+                <Input
+                  id="expirationDate"
+                  type="date"
+                  value={formData.expirationDate}
+                  onChange={(e) => setFormData({ ...formData, expirationDate: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="totalQuantity">Quantidade Total *</Label>
+                <Input
+                  id="totalQuantity"
+                  type="number"
+                  value={formData.totalQuantity}
+                  onChange={(e) => setFormData({ ...formData, totalQuantity: e.target.value })}
+                  placeholder="Número de licenças"
+                />
+              </div>
+              <div>
+                <Label htmlFor="cost">Valor (R$)</Label>
+                <Input
+                  id="cost"
+                  type="number"
+                  step="0.01"
+                  value={formData.cost}
+                  onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="description">Descrição</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Descrição da licença"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2 mt-4">
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSubmit}>
+                {editingLicense ? 'Atualizar' : 'Criar'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Stats Cards */}
@@ -212,7 +419,12 @@ export const Licenses = () => {
                   </div>
 
                   <div className="flex space-x-2 pt-2 border-t">
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => handleEdit(license)}
+                    >
                       <Edit className="w-4 h-4 mr-1" />
                       Editar
                     </Button>
@@ -220,7 +432,12 @@ export const Licenses = () => {
                       <Users className="w-4 h-4 mr-1" />
                       Gerenciar
                     </Button>
-                    <Button variant="outline" size="sm" className="text-destructive">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-destructive"
+                      onClick={() => handleDelete(license.id)}
+                    >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -230,6 +447,23 @@ export const Licenses = () => {
           );
         })}
       </div>
+
+      {/* Empty State */}
+      {licenses.length === 0 && (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <Shield className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Nenhuma licença encontrada</h3>
+            <p className="text-muted-foreground mb-4">
+              Comece adicionando sua primeira licença de software.
+            </p>
+            <Button onClick={() => setIsDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar Primeira Licença
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Laptop, Plus, Edit, Trash2, Search, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,10 +11,12 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { useApp } from '@/contexts/AppContext';
 import { Asset } from '@/types';
+import { assetsService, CreateAssetData, UpdateAssetData } from '@/services/assetsService';
 import { toast } from 'sonner';
 
 export const Assets = () => {
-  const { assets, setAssets, currentOrganization, people } = useApp();
+  const { currentOrganization, people } = useApp();
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,6 +34,19 @@ export const Assets = () => {
     notes: '',
     assignedTo: '',
   });
+
+  // Load assets when organization changes
+  useEffect(() => {
+    if (currentOrganization) {
+      loadAssets();
+    }
+  }, [currentOrganization]);
+
+  const loadAssets = () => {
+    if (!currentOrganization) return;
+    const assetData = assetsService.getAll(currentOrganization.id);
+    setAssets(assetData);
+  };
 
   // Filter assets by current organization
   const orgAssets = assets.filter(asset => 
@@ -94,13 +108,9 @@ export const Assets = () => {
       return;
     }
 
-    const assignedPerson = formData.assignedTo ? 
-      people.find(p => p.id === formData.assignedTo) : null;
-
     if (editingAsset) {
       // Edit asset
-      const updatedAsset: Asset = {
-        ...editingAsset,
+      const updateData: UpdateAssetData = {
         name: formData.name,
         type: formData.type,
         serialNumber: formData.serialNumber,
@@ -110,18 +120,13 @@ export const Assets = () => {
         condition: formData.condition,
         notes: formData.notes,
         assignedTo: formData.assignedTo || undefined,
-        assignedToName: assignedPerson?.name,
       };
       
-      setAssets(assets.map(asset => 
-        asset.id === editingAsset.id ? updatedAsset : asset
-      ));
-      
+      assetsService.update(editingAsset.id, updateData);
       toast.success('Ativo atualizado com sucesso!');
     } else {
       // Create new asset
-      const newAsset: Asset = {
-        id: Date.now().toString(),
+      const createData: CreateAssetData = {
         name: formData.name,
         type: formData.type,
         serialNumber: formData.serialNumber,
@@ -131,14 +136,14 @@ export const Assets = () => {
         condition: formData.condition,
         notes: formData.notes,
         assignedTo: formData.assignedTo || undefined,
-        assignedToName: assignedPerson?.name,
         organizationId: currentOrganization.id,
       };
       
-      setAssets([...assets, newAsset]);
+      assetsService.create(createData);
       toast.success('Ativo criado com sucesso!');
     }
 
+    loadAssets();
     resetForm();
     setEditingAsset(null);
     setIsDialogOpen(false);
@@ -161,9 +166,12 @@ export const Assets = () => {
   };
 
   const handleDelete = (assetId: string) => {
-    const asset = assets.find(a => a.id === assetId);
-    setAssets(assets.filter(a => a.id !== assetId));
-    toast.success(`Ativo "${asset?.name}" excluído com sucesso!`);
+    if (window.confirm('Tem certeza que deseja excluir este ativo?')) {
+      const asset = assets.find(a => a.id === assetId);
+      assetsService.delete(assetId);
+      loadAssets();
+      toast.success(`Ativo "${asset?.name}" excluído com sucesso!`);
+    }
   };
 
   if (!currentOrganization) {
@@ -452,7 +460,7 @@ export const Assets = () => {
               <Laptop className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">Nenhum ativo encontrado</h3>
               <p className="text-muted-foreground">
-                {orgAssets.length === 0 
+                {assets.length === 0 
                   ? 'Comece adicionando seu primeiro ativo.'
                   : 'Tente ajustar os filtros para encontrar ativos.'
                 }
