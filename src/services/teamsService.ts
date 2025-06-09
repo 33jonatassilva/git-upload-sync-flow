@@ -16,53 +16,65 @@ export interface UpdateTeamData {
   managerId?: string;
 }
 
+// Helper para acessar dados do localStorage
+const getTableData = (tableName: string): any[] => {
+  const data = localStorage.getItem('app_database');
+  if (!data) return [];
+  const parsed = JSON.parse(data);
+  return parsed[tableName] || [];
+};
+
+const saveTableData = (tableName: string, tableData: any[]): void => {
+  const data = localStorage.getItem('app_database');
+  const parsed = data ? JSON.parse(data) : {};
+  parsed[tableName] = tableData;
+  localStorage.setItem('app_database', JSON.stringify(parsed));
+};
+
 export const teamsService = {
   getAll: (organizationId: string): Team[] => {
-    const stmt = db.prepare(`
-      SELECT 
-        t.*,
-        COUNT(p.id) as peopleCount
-      FROM teams t
-      LEFT JOIN people p ON t.id = p.team_id AND p.status = 'active'
-      WHERE t.organization_id = ?
-      GROUP BY t.id
-      ORDER BY t.created_at DESC
-    `);
+    const teams = getTableData('teams');
+    const people = getTableData('people');
     
-    const rows = stmt.all(organizationId) as any[];
-    return rows.map(row => ({
-      id: row.id,
-      name: row.name,
-      description: row.description,
-      organizationId: row.organization_id,
-      peopleCount: row.peopleCount || 0,
-      createdAt: row.created_at,
-      managerId: row.manager_id
-    }));
+    return teams
+      .filter(team => team.organization_id === organizationId)
+      .map(team => {
+        const peopleCount = people.filter(person => 
+          person.team_id === team.id && person.status === 'active'
+        ).length;
+        
+        return {
+          id: team.id,
+          name: team.name,
+          description: team.description,
+          organizationId: team.organization_id,
+          peopleCount: peopleCount,
+          createdAt: team.created_at,
+          managerId: team.manager_id
+        };
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 
   getById: (id: string): Team | null => {
-    const stmt = db.prepare(`
-      SELECT 
-        t.*,
-        COUNT(p.id) as peopleCount
-      FROM teams t
-      LEFT JOIN people p ON t.id = p.team_id AND p.status = 'active'
-      WHERE t.id = ?
-      GROUP BY t.id
-    `);
+    const teams = getTableData('teams');
+    const people = getTableData('people');
     
-    const row = stmt.get(id) as any;
-    if (!row) return null;
+    const team = teams.find(team => team.id === id);
+    if (!team) return null;
+    
+    const peopleCount = people.filter(person => 
+      person.team_id === team.id && person.status === 'active'
+    ).length;
     
     return {
-      id: row.id,
-      name: row.name,
-      description: row.description,
-      organizationId: row.organization_id,
-      peopleCount: row.peopleCount || 0,
-      createdAt: row.created_at,
-      managerId: row.manager_id
+      id: team.id,
+      name: team.name,
+      description: team.description,
+      organizationId: team.organization_id,
+      peopleCount: peopleCount,
+      createdAt: team.created_at,
+      managerId: team.manager_id
     };
   },
 
@@ -70,12 +82,19 @@ export const teamsService = {
     const id = uuidv4();
     const now = new Date().toISOString();
     
-    const stmt = db.prepare(`
-      INSERT INTO teams (id, name, description, organization_id, manager_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
+    const teams = getTableData('teams');
+    const newTeam = {
+      id,
+      name: data.name,
+      description: data.description || null,
+      organization_id: data.organizationId,
+      manager_id: data.managerId || null,
+      created_at: now,
+      updated_at: now
+    };
     
-    stmt.run(id, data.name, data.description || null, data.organizationId, data.managerId || null, now, now);
+    teams.push(newTeam);
+    saveTableData('teams', teams);
     
     return {
       id,
@@ -89,60 +108,73 @@ export const teamsService = {
   },
 
   update: (id: string, data: UpdateTeamData): void => {
+    const teams = getTableData('teams');
+    const teamIndex = teams.findIndex(team => team.id === id);
+    
+    if (teamIndex === -1) return;
+    
     const now = new Date().toISOString();
-    const updates: string[] = [];
-    const values: any[] = [];
+    const team = teams[teamIndex];
     
-    if (data.name !== undefined) {
-      updates.push('name = ?');
-      values.push(data.name);
-    }
-    if (data.description !== undefined) {
-      updates.push('description = ?');
-      values.push(data.description);
-    }
-    if (data.managerId !== undefined) {
-      updates.push('manager_id = ?');
-      values.push(data.managerId);
-    }
+    if (data.name !== undefined) team.name = data.name;
+    if (data.description !== undefined) team.description = data.description;
+    if (data.managerId !== undefined) team.manager_id = data.managerId;
+    team.updated_at = now;
     
-    updates.push('updated_at = ?');
-    values.push(now);
-    values.push(id);
-    
-    const stmt = db.prepare(`UPDATE teams SET ${updates.join(', ')} WHERE id = ?`);
-    stmt.run(...values);
+    teams[teamIndex] = team;
+    saveTableData('teams', teams);
   },
 
   delete: (id: string): void => {
     // First, update people to remove team association
-    const updatePeopleStmt = db.prepare('UPDATE people SET team_id = NULL WHERE team_id = ?');
-    updatePeopleStmt.run(id);
+    const people = getTableData('people');
+    const updatedPeople = people.map(person => {
+      if (person.team_id === id) {
+        return { ...person, team_id: null };
+      }
+      return person;
+    });
+    saveTableData('people', updatedPeople);
     
     // Then delete the team
-    const deleteStmt = db.prepare('DELETE FROM teams WHERE id = ?');
-    deleteStmt.run(id);
+    const teams = getTableData('teams');
+    const filteredTeams = teams.filter(team => team.id !== id);
+    saveTableData('teams', filteredTeams);
   },
 
   addPersonToTeam: (teamId: string, personId: string): void => {
-    const stmt = db.prepare('UPDATE people SET team_id = ? WHERE id = ?');
-    stmt.run(teamId, personId);
+    const people = getTableData('people');
+    const personIndex = people.findIndex(person => person.id === personId);
+    
+    if (personIndex !== -1) {
+      people[personIndex].team_id = teamId;
+      saveTableData('people', people);
+    }
   },
 
   removePersonFromTeam: (personId: string): void => {
-    const stmt = db.prepare('UPDATE people SET team_id = NULL WHERE id = ?');
-    stmt.run(personId);
+    const people = getTableData('people');
+    const personIndex = people.findIndex(person => person.id === personId);
+    
+    if (personIndex !== -1) {
+      people[personIndex].team_id = null;
+      saveTableData('people', people);
+    }
   },
 
   getTeamMembers: (teamId: string) => {
-    const stmt = db.prepare(`
-      SELECT p.*, t.name as teamName
-      FROM people p
-      LEFT JOIN teams t ON p.team_id = t.id
-      WHERE p.team_id = ? AND p.status = 'active'
-      ORDER BY p.name
-    `);
+    const people = getTableData('people');
+    const teams = getTableData('teams');
     
-    return stmt.all(teamId);
+    return people
+      .filter(person => person.team_id === teamId && person.status === 'active')
+      .map(person => {
+        const team = teams.find(team => team.id === person.team_id);
+        return {
+          ...person,
+          teamName: team ? team.name : null
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 };

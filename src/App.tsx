@@ -15,6 +15,10 @@ import { Assets } from "./pages/Assets";
 import { Inventory } from "./pages/Inventory";
 import { Organizations } from "./pages/Organizations";
 import NotFound from "./pages/NotFound";
+import { initDatabase } from "./lib/database";
+
+// Inicializar o banco de dados
+initDatabase();
 
 const queryClient = new QueryClient();
 
