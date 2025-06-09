@@ -1,31 +1,39 @@
+
 import { useState, useEffect } from 'react';
-import { Laptop, Plus, Edit, Trash2, Search, Filter } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Asset, Person } from '@/types';
+import { assetsService } from '@/services/assetsService';
+import { peopleService } from '@/services/peopleService';
+import { Laptop, Plus, Edit, Trash2, Building2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/contexts/AppContext';
-import { Asset } from '@/types';
-import { assetsService, CreateAssetData, UpdateAssetData } from '@/services/assetsService';
-import { toast } from 'sonner';
 
 export const Assets = () => {
-  const { currentOrganization, people } = useApp();
+  const { toast } = useToast();
+  const { currentOrganization } = useApp();
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [typeFilter, setTypeFilter] = useState('all');
-  
   const [formData, setFormData] = useState({
     name: '',
-    type: 'notebook' as Asset['type'],
+    type: 'laptop' as Asset['type'],
     serialNumber: '',
     value: '',
     purchaseDate: '',
@@ -35,118 +43,111 @@ export const Assets = () => {
     assignedTo: '',
   });
 
-  // Load assets when organization changes
-  useEffect(() => {
-    if (currentOrganization) {
-      loadAssets();
+  const loadData = async () => {
+    if (!currentOrganization) {
+      setAssets([]);
+      setPeople([]);
+      setLoading(false);
+      return;
     }
+
+    setLoading(true);
+    try {
+      const assetsData = assetsService.getAll(currentOrganization.id);
+      const peopleData = peopleService.getAll(currentOrganization.id);
+      setAssets(assetsData);
+      setPeople(peopleData);
+    } catch (error) {
+      toast({
+        title: 'Erro!',
+        description: 'Não foi possível carregar os dados.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, [currentOrganization]);
 
-  const loadAssets = () => {
-    if (!currentOrganization) return;
-    const assetData = assetsService.getAll(currentOrganization.id);
-    setAssets(assetData);
-  };
-
-  // Filter assets by current organization
-  const orgAssets = assets.filter(asset => 
-    !currentOrganization || asset.organizationId === currentOrganization.id
-  );
-
-  // Apply filters
-  const filteredAssets = orgAssets.filter(asset => {
-    const matchesSearch = asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         asset.serialNumber.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || asset.status === statusFilter;
-    const matchesType = typeFilter === 'all' || asset.type === typeFilter;
-    
-    return matchesSearch && matchesStatus && matchesType;
-  });
-
-  const getStatusColor = (status: Asset['status']) => {
-    switch (status) {
-      case 'available': return 'status-success';
-      case 'allocated': return 'status-info';
-      case 'maintenance': return 'status-warning';
-      case 'retired': return 'status-danger';
-      default: return 'status-info';
-    }
-  };
-
-  const getConditionColor = (condition: Asset['condition']) => {
-    switch (condition) {
-      case 'new': return 'status-success';
-      case 'good': return 'status-info';
-      case 'fair': return 'status-warning';
-      case 'poor': return 'status-danger';
-      default: return 'status-info';
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      type: 'notebook',
-      serialNumber: '',
-      value: '',
-      purchaseDate: '',
-      status: 'available',
-      condition: 'new',
-      notes: '',
-      assignedTo: '',
-    });
-  };
-
   const handleSubmit = () => {
-    if (!formData.name.trim() || !formData.serialNumber.trim()) {
-      toast.error('Nome e número de série são obrigatórios');
-      return;
-    }
-
     if (!currentOrganization) {
-      toast.error('Selecione uma organização primeiro');
+      toast({
+        title: 'Erro!',
+        description: 'Selecione uma organização primeiro.',
+        variant: 'destructive',
+      });
       return;
     }
 
-    if (editingAsset) {
-      // Edit asset
-      const updateData: UpdateAssetData = {
-        name: formData.name,
-        type: formData.type,
-        serialNumber: formData.serialNumber,
-        value: parseFloat(formData.value) || 0,
-        purchaseDate: formData.purchaseDate,
-        status: formData.status,
-        condition: formData.condition,
-        notes: formData.notes,
-        assignedTo: formData.assignedTo || undefined,
-      };
-      
-      assetsService.update(editingAsset.id, updateData);
-      toast.success('Ativo atualizado com sucesso!');
-    } else {
-      // Create new asset
-      const createData: CreateAssetData = {
-        name: formData.name,
-        type: formData.type,
-        serialNumber: formData.serialNumber,
-        value: parseFloat(formData.value) || 0,
-        purchaseDate: formData.purchaseDate,
-        status: formData.status,
-        condition: formData.condition,
-        notes: formData.notes,
-        assignedTo: formData.assignedTo || undefined,
-        organizationId: currentOrganization.id,
-      };
-      
-      assetsService.create(createData);
-      toast.success('Ativo criado com sucesso!');
+    if (!formData.name.trim() || !formData.serialNumber.trim() || !formData.value.trim() || !formData.purchaseDate) {
+      toast({
+        title: 'Erro!',
+        description: 'Preencha todos os campos obrigatórios.',
+        variant: 'destructive',
+      });
+      return;
     }
 
-    loadAssets();
-    resetForm();
-    setEditingAsset(null);
-    setIsDialogOpen(false);
+    try {
+      if (editingAsset) {
+        assetsService.update(editingAsset.id, {
+          name: formData.name,
+          type: formData.type,
+          serialNumber: formData.serialNumber,
+          value: parseFloat(formData.value),
+          purchaseDate: formData.purchaseDate,
+          status: formData.status,
+          condition: formData.condition,
+          notes: formData.notes,
+          assignedTo: formData.assignedTo || undefined,
+        });
+        toast({
+          title: 'Ativo atualizado!',
+          description: 'O ativo foi atualizado com sucesso.',
+        });
+      } else {
+        assetsService.create({
+          name: formData.name,
+          type: formData.type,
+          serialNumber: formData.serialNumber,
+          value: parseFloat(formData.value),
+          purchaseDate: formData.purchaseDate,
+          status: formData.status,
+          condition: formData.condition,
+          notes: formData.notes,
+          assignedTo: formData.assignedTo || undefined,
+          organizationId: currentOrganization.id,
+        });
+        toast({
+          title: 'Ativo criado!',
+          description: 'O ativo foi criado com sucesso.',
+        });
+      }
+
+      setFormData({
+        name: '',
+        type: 'laptop',
+        serialNumber: '',
+        value: '',
+        purchaseDate: '',
+        status: 'available',
+        condition: 'new',
+        notes: '',
+        assignedTo: '',
+      });
+      setEditingAsset(null);
+      setDialogOpen(false);
+      loadData();
+    } catch (error) {
+      toast({
+        title: 'Erro!',
+        description: 'Não foi possível salvar o ativo.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleEdit = (asset: Asset) => {
@@ -162,53 +163,94 @@ export const Assets = () => {
       notes: asset.notes || '',
       assignedTo: asset.assignedTo || '',
     });
-    setIsDialogOpen(true);
+    setDialogOpen(true);
   };
 
-  const handleDelete = (assetId: string) => {
-    if (window.confirm('Tem certeza que deseja excluir este ativo?')) {
-      const asset = assets.find(a => a.id === assetId);
-      assetsService.delete(assetId);
-      loadAssets();
-      toast.success(`Ativo "${asset?.name}" excluído com sucesso!`);
+  const handleDelete = (asset: Asset) => {
+    if (confirm(`Tem certeza que deseja excluir "${asset.name}"? Esta ação não pode ser desfeita.`)) {
+      try {
+        assetsService.delete(asset.id);
+        toast({
+          title: 'Ativo excluído!',
+          description: 'O ativo foi excluído com sucesso.',
+        });
+        loadData();
+      } catch (error) {
+        toast({
+          title: 'Erro!',
+          description: 'Não foi possível excluir o ativo.',
+          variant: 'destructive',
+        });
+      }
     }
+  };
+
+  const handleAddNew = () => {
+    if (!currentOrganization) {
+      toast({
+        title: 'Erro!',
+        description: 'Selecione uma organização primeiro.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setEditingAsset(null);
+    setFormData({
+      name: '',
+      type: 'laptop',
+      serialNumber: '',
+      value: '',
+      purchaseDate: '',
+      status: 'available',
+      condition: 'new',
+      notes: '',
+      assignedTo: '',
+    });
+    setDialogOpen(true);
   };
 
   if (!currentOrganization) {
     return (
       <div className="text-center py-12">
-        <Laptop className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Selecione uma organização</h3>
+        <Building2 className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Nenhuma organização selecionada</h2>
         <p className="text-muted-foreground">
-          Você precisa selecionar uma organização para gerenciar ativos.
+          Selecione uma organização para gerenciar os ativos.
         </p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Carregando ativos...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Page Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Ativos</h1>
-          <p className="text-muted-foreground">Gerencie equipamentos e recursos físicos</p>
+          <p className="text-muted-foreground">
+            Gerencie os ativos da organização: {currentOrganization.name}
+          </p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button 
-              className="gradient-bg hover:opacity-90 transition-opacity"
-              onClick={() => {
-                setEditingAsset(null);
-                resetForm();
-              }}
-            >
-              <Plus className="w-4 h-4 mr-2" />
+            <Button onClick={handleAddNew} className="flex items-center gap-2">
+              <Plus className="w-4 h-4" />
               Novo Ativo
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>
                 {editingAsset ? 'Editar Ativo' : 'Novo Ativo'}
@@ -225,17 +267,18 @@ export const Assets = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="type">Tipo</Label>
-                <Select value={formData.type} onValueChange={(value: Asset['type']) => 
-                  setFormData({ ...formData, type: value })
-                }>
+                <Label htmlFor="type">Tipo *</Label>
+                <Select value={formData.type} onValueChange={(value: Asset['type']) => setFormData({ ...formData, type: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="notebook">Notebook</SelectItem>
+                    <SelectItem value="laptop">Laptop</SelectItem>
+                    <SelectItem value="desktop">Desktop</SelectItem>
                     <SelectItem value="monitor">Monitor</SelectItem>
-                    <SelectItem value="adapter">Adaptador</SelectItem>
+                    <SelectItem value="phone">Telefone</SelectItem>
+                    <SelectItem value="tablet">Tablet</SelectItem>
+                    <SelectItem value="printer">Impressora</SelectItem>
                     <SelectItem value="other">Outro</SelectItem>
                   </SelectContent>
                 </Select>
@@ -250,17 +293,18 @@ export const Assets = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="value">Valor (R$)</Label>
+                <Label htmlFor="value">Valor *</Label>
                 <Input
                   id="value"
                   type="number"
+                  step="0.01"
                   value={formData.value}
                   onChange={(e) => setFormData({ ...formData, value: e.target.value })}
                   placeholder="0.00"
                 />
               </div>
               <div>
-                <Label htmlFor="purchaseDate">Data de Compra</Label>
+                <Label htmlFor="purchaseDate">Data de Compra *</Label>
                 <Input
                   id="purchaseDate"
                   type="date"
@@ -269,10 +313,8 @@ export const Assets = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(value: Asset['status']) => 
-                  setFormData({ ...formData, status: value })
-                }>
+                <Label htmlFor="status">Status *</Label>
+                <Select value={formData.status} onValueChange={(value: Asset['status']) => setFormData({ ...formData, status: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -285,10 +327,8 @@ export const Assets = () => {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="condition">Condição</Label>
-                <Select value={formData.condition} onValueChange={(value: Asset['condition']) => 
-                  setFormData({ ...formData, condition: value })
-                }>
+                <Label htmlFor="condition">Condição *</Label>
+                <Select value={formData.condition} onValueChange={(value: Asset['condition']) => setFormData({ ...formData, condition: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -302,17 +342,13 @@ export const Assets = () => {
               </div>
               <div>
                 <Label htmlFor="assignedTo">Atribuído a</Label>
-                <Select value={formData.assignedTo} onValueChange={(value) => 
-                  setFormData({ ...formData, assignedTo: value })
-                }>
+                <Select value={formData.assignedTo} onValueChange={(value) => setFormData({ ...formData, assignedTo: value })}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecionar pessoa" />
+                    <SelectValue placeholder="Selecione uma pessoa (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
-                    {people
-                      .filter(p => p.organizationId === currentOrganization?.id)
-                      .map((person) => (
+                    <SelectItem value="">Não atribuído</SelectItem>
+                    {people.map((person) => (
                       <SelectItem key={person.id} value={person.id}>
                         {person.name}
                       </SelectItem>
@@ -326,110 +362,76 @@ export const Assets = () => {
                   id="notes"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Observações sobre o ativo"
+                  placeholder="Observações adicionais"
                 />
               </div>
-            </div>
-            <div className="flex justify-end space-x-2 mt-4">
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleSubmit}>
-                {editingAsset ? 'Atualizar' : 'Criar'}
-              </Button>
+              <div className="col-span-2 flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSubmit}>
+                  {editingAsset ? 'Atualizar' : 'Criar'}
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="relative flex-1 min-w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome ou número de série..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Status</SelectItem>
-                <SelectItem value="available">Disponível</SelectItem>
-                <SelectItem value="allocated">Alocado</SelectItem>
-                <SelectItem value="maintenance">Manutenção</SelectItem>
-                <SelectItem value="retired">Aposentado</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Tipos</SelectItem>
-                <SelectItem value="notebook">Notebook</SelectItem>
-                <SelectItem value="monitor">Monitor</SelectItem>
-                <SelectItem value="adapter">Adaptador</SelectItem>
-                <SelectItem value="other">Outro</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Assets Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Ativos ({filteredAssets.length})</CardTitle>
+          <CardTitle className="flex items-center space-x-2">
+            <Laptop className="w-5 h-5" />
+            <span>Lista de Ativos</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {filteredAssets.length > 0 ? (
+          {assets.length === 0 ? (
+            <div className="text-center py-8">
+              <Laptop className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium">Nenhum ativo encontrado</h3>
+              <p className="text-muted-foreground mb-4">
+                Comece adicionando o primeiro ativo da organização.
+              </p>
+              <Button onClick={handleAddNew}>
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar Primeiro Ativo
+              </Button>
+            </div>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead>Nº Série</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Condição</TableHead>
-                  <TableHead>Atribuído a</TableHead>
+                  <TableHead>Série</TableHead>
                   <TableHead>Valor</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Atribuído a</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAssets.map((asset) => (
+                {assets.map((asset) => (
                   <TableRow key={asset.id}>
                     <TableCell className="font-medium">{asset.name}</TableCell>
-                    <TableCell className="capitalize">{asset.type}</TableCell>
-                    <TableCell className="font-mono text-sm">{asset.serialNumber}</TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(asset.status)}>
-                        {asset.status === 'available' && 'Disponível'}
-                        {asset.status === 'allocated' && 'Alocado'}
-                        {asset.status === 'maintenance' && 'Manutenção'}
-                        {asset.status === 'retired' && 'Aposentado'}
+                      <Badge variant="outline">{asset.type}</Badge>
+                    </TableCell>
+                    <TableCell>{asset.serialNumber}</TableCell>
+                    <TableCell>R$ {asset.value.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <Badge variant={
+                        asset.status === 'available' ? 'default' :
+                        asset.status === 'allocated' ? 'secondary' :
+                        asset.status === 'maintenance' ? 'destructive' : 'outline'
+                      }>
+                        {asset.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getConditionColor(asset.condition)}>
-                        {asset.condition === 'new' && 'Novo'}
-                        {asset.condition === 'good' && 'Bom'}
-                        {asset.condition === 'fair' && 'Regular'}
-                        {asset.condition === 'poor' && 'Ruim'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {asset.assignedToName || '-'}
-                    </TableCell>
-                    <TableCell>
-                      R$ {asset.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      {asset.assignedToName || <span className="text-muted-foreground">Não atribuído</span>}
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-1">
@@ -439,15 +441,15 @@ export const Assets = () => {
                           onClick={() => handleEdit(asset)}
                           className="h-8 w-8"
                         >
-                          <Edit className="w-3 h-3" />
+                          <Edit className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(asset.id)}
-                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(asset)}
+                          className="h-8 w-8 text-destructive"
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -455,17 +457,6 @@ export const Assets = () => {
                 ))}
               </TableBody>
             </Table>
-          ) : (
-            <div className="text-center py-8">
-              <Laptop className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Nenhum ativo encontrado</h3>
-              <p className="text-muted-foreground">
-                {assets.length === 0 
-                  ? 'Comece adicionando seu primeiro ativo.'
-                  : 'Tente ajustar os filtros para encontrar ativos.'
-                }
-              </p>
-            </div>
           )}
         </CardContent>
       </Card>

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +15,7 @@ import {
 import { Team, Person } from '@/types';
 import { teamsService } from '@/services/teamsService';
 import { TeamDialog } from '@/components/teams/TeamDialog';
+import { AddPersonToTeamDialog } from '@/components/teams/AddPersonToTeamDialog';
 import { 
   ArrowLeft, 
   Edit, 
@@ -24,19 +26,22 @@ import {
   Building2 
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useApp } from '@/contexts/AppContext';
 
 export const TeamDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { currentOrganization } = useApp();
   
   const [team, setTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [addPersonDialogOpen, setAddPersonDialogOpen] = useState(false);
 
   const loadTeamData = async () => {
-    if (!id) return;
+    if (!id || !currentOrganization) return;
     
     setLoading(true);
     try {
@@ -58,7 +63,7 @@ export const TeamDetails = () => {
 
   useEffect(() => {
     loadTeamData();
-  }, [id]);
+  }, [id, currentOrganization]);
 
   const handleDelete = async () => {
     if (!id || !team) return;
@@ -97,6 +102,19 @@ export const TeamDetails = () => {
       });
     }
   };
+
+  if (!currentOrganization) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold">Nenhuma organização selecionada</h2>
+        <p className="text-muted-foreground">Selecione uma organização primeiro.</p>
+        <Button onClick={() => navigate('/organizations')} className="mt-4">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Ir para Organizações
+        </Button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -207,7 +225,7 @@ export const TeamDetails = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Membros do Time</CardTitle>
-            <Button>
+            <Button onClick={() => setAddPersonDialogOpen(true)}>
               <UserPlus className="w-4 h-4 mr-2" />
               Adicionar Pessoa
             </Button>
@@ -219,6 +237,13 @@ export const TeamDetails = () => {
               <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium">Nenhum membro</h3>
               <p className="text-muted-foreground">Este time ainda não possui membros.</p>
+              <Button 
+                className="mt-4" 
+                onClick={() => setAddPersonDialogOpen(true)}
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Adicionar Primeiro Membro
+              </Button>
             </div>
           ) : (
             <Table>
@@ -264,6 +289,15 @@ export const TeamDetails = () => {
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         team={team}
+        organizationId={team.organizationId}
+        onSuccess={loadTeamData}
+      />
+
+      {/* Add Person Dialog */}
+      <AddPersonToTeamDialog
+        open={addPersonDialogOpen}
+        onOpenChange={setAddPersonDialogOpen}
+        teamId={team.id}
         organizationId={team.organizationId}
         onSuccess={loadTeamData}
       />

@@ -1,154 +1,241 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { assetsService } from '@/services/assetsService';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { inventoryService } from '@/services/inventoryService';
+import { Package, Plus, Edit, Trash2, Building2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/contexts/AppContext';
-import { Asset } from '@/types';
-import { 
-  Package, 
-  Search, 
-  Laptop, 
-  Monitor, 
-  Usb,
-  Plus,
-  User,
-  Calendar,
-  DollarSign,
-  Filter
-} from 'lucide-react';
-import { toast } from 'sonner';
+
+interface InventoryItem {
+  id: string;
+  name: string;
+  description?: string;
+  category: string;
+  quantity: number;
+  minQuantity: number;
+  unitPrice: number;
+  supplier?: string;
+  location?: string;
+  organizationId: string;
+}
 
 export const Inventory = () => {
-  const { currentOrganization, people } = useApp();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [inventoryAssets, setInventoryAssets] = useState<Asset[]>([]);
-  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
-  const [selectedPersonId, setSelectedPersonId] = useState('');
-  
-  // Load available assets when organization changes
-  useEffect(() => {
-    if (currentOrganization) {
-      loadInventoryAssets();
+  const { toast } = useToast();
+  const { currentOrganization } = useApp();
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    category: '',
+    quantity: '',
+    minQuantity: '',
+    unitPrice: '',
+    supplier: '',
+    location: '',
+  });
+
+  const loadData = async () => {
+    if (!currentOrganization) {
+      setItems([]);
+      setLoading(false);
+      return;
     }
+
+    setLoading(true);
+    try {
+      const itemsData = inventoryService.getAll(currentOrganization.id);
+      setItems(itemsData);
+    } catch (error) {
+      toast({
+        title: 'Erro!',
+        description: 'Não foi possível carregar os dados.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, [currentOrganization]);
 
-  const loadInventoryAssets = () => {
-    if (!currentOrganization) return;
-    const assets = assetsService.getAvailable(currentOrganization.id);
-    setInventoryAssets(assets);
-  };
-
-  const filteredAssets = inventoryAssets.filter(asset =>
-    asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    asset.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    asset.type.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleAssignAsset = (asset: Asset) => {
-    setSelectedAsset(asset);
-    setSelectedPersonId('');
-    setIsAssignDialogOpen(true);
-  };
-
-  const handleConfirmAssignment = () => {
-    if (!selectedAsset || !selectedPersonId) {
-      toast.error('Selecione uma pessoa para atribuir o ativo');
+  const handleSubmit = () => {
+    if (!currentOrganization) {
+      toast({
+        title: 'Erro!',
+        description: 'Selecione uma organização primeiro.',
+        variant: 'destructive',
+      });
       return;
     }
 
-    const person = people.find(p => p.id === selectedPersonId);
-    if (!person) {
-      toast.error('Pessoa não encontrada');
+    if (!formData.name.trim() || !formData.category.trim() || !formData.quantity || !formData.unitPrice) {
+      toast({
+        title: 'Erro!',
+        description: 'Preencha todos os campos obrigatórios.',
+        variant: 'destructive',
+      });
       return;
     }
 
-    assetsService.assignToUser(selectedAsset.id, selectedPersonId);
-    toast.success(`Ativo "${selectedAsset.name}" atribuído para ${person.name}`);
-    
-    loadInventoryAssets();
-    setIsAssignDialogOpen(false);
-    setSelectedAsset(null);
-    setSelectedPersonId('');
-  };
+    try {
+      if (editingItem) {
+        inventoryService.update(editingItem.id, {
+          name: formData.name,
+          description: formData.description,
+          category: formData.category,
+          quantity: parseInt(formData.quantity),
+          minQuantity: parseInt(formData.minQuantity) || 0,
+          unitPrice: parseFloat(formData.unitPrice),
+          supplier: formData.supplier,
+          location: formData.location,
+        });
+        toast({
+          title: 'Item atualizado!',
+          description: 'O item foi atualizado com sucesso.',
+        });
+      } else {
+        inventoryService.create({
+          name: formData.name,
+          description: formData.description,
+          category: formData.category,
+          quantity: parseInt(formData.quantity),
+          minQuantity: parseInt(formData.minQuantity) || 0,
+          unitPrice: parseFloat(formData.unitPrice),
+          supplier: formData.supplier,
+          location: formData.location,
+          organizationId: currentOrganization.id,
+        });
+        toast({
+          title: 'Item criado!',
+          description: 'O item foi criado com sucesso.',
+        });
+      }
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'notebook':
-        return <Laptop className="w-5 h-5" />;
-      case 'monitor':
-        return <Monitor className="w-5 h-5" />;
-      case 'adapter':
-        return <Usb className="w-5 h-5" />;
-      default:
-        return <Package className="w-5 h-5" />;
+      setFormData({
+        name: '',
+        description: '',
+        category: '',
+        quantity: '',
+        minQuantity: '',
+        unitPrice: '',
+        supplier: '',
+        location: '',
+      });
+      setEditingItem(null);
+      setDialogOpen(false);
+      loadData();
+    } catch (error) {
+      toast({
+        title: 'Erro!',
+        description: 'Não foi possível salvar o item.',
+        variant: 'destructive',
+      });
     }
   };
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'notebook':
-        return 'Notebook';
-      case 'monitor':
-        return 'Monitor';
-      case 'adapter':
-        return 'Adaptador';
-      default:
-        return 'Outro';
+  const handleEdit = (item: InventoryItem) => {
+    setEditingItem(item);
+    setFormData({
+      name: item.name,
+      description: item.description || '',
+      category: item.category,
+      quantity: item.quantity.toString(),
+      minQuantity: item.minQuantity.toString(),
+      unitPrice: item.unitPrice.toString(),
+      supplier: item.supplier || '',
+      location: item.location || '',
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDelete = (item: InventoryItem) => {
+    if (confirm(`Tem certeza que deseja excluir "${item.name}"? Esta ação não pode ser desfeita.`)) {
+      try {
+        inventoryService.delete(item.id);
+        toast({
+          title: 'Item excluído!',
+          description: 'O item foi excluído com sucesso.',
+        });
+        loadData();
+      } catch (error) {
+        toast({
+          title: 'Erro!',
+          description: 'Não foi possível excluir o item.',
+          variant: 'destructive',
+        });
+      }
     }
   };
 
-  const getConditionColor = (condition: string) => {
-    switch (condition) {
-      case 'new':
-        return 'text-green-600';
-      case 'good':
-        return 'text-blue-600';
-      case 'fair':
-        return 'text-yellow-600';
-      case 'poor':
-        return 'text-red-600';
-      default:
-        return 'text-muted-foreground';
+  const handleAddNew = () => {
+    if (!currentOrganization) {
+      toast({
+        title: 'Erro!',
+        description: 'Selecione uma organização primeiro.',
+        variant: 'destructive',
+      });
+      return;
     }
+    setEditingItem(null);
+    setFormData({
+      name: '',
+      description: '',
+      category: '',
+      quantity: '',
+      minQuantity: '',
+      unitPrice: '',
+      supplier: '',
+      location: '',
+    });
+    setDialogOpen(true);
   };
 
-  const getConditionText = (condition: string) => {
-    switch (condition) {
-      case 'new':
-        return 'Novo';
-      case 'good':
-        return 'Bom';
-      case 'fair':
-        return 'Regular';
-      case 'poor':
-        return 'Ruim';
-      default:
-        return 'N/A';
-    }
-  };
+  const getLowStockItems = () => items.filter(item => item.quantity <= item.minQuantity);
 
   if (!currentOrganization) {
     return (
       <div className="text-center py-12">
-        <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Selecione uma organização</h3>
+        <Building2 className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Nenhuma organização selecionada</h2>
         <p className="text-muted-foreground">
-          Você precisa selecionar uma organização para gerenciar o estoque.
+          Selecione uma organização para gerenciar o estoque.
         </p>
       </div>
     );
   }
 
-  // Calculate stats
-  const notebooks = inventoryAssets.filter(a => a.type === 'notebook');
-  const monitors = inventoryAssets.filter(a => a.type === 'monitor');
-  const adapters = inventoryAssets.filter(a => a.type === 'adapter');
-  const totalValue = inventoryAssets.reduce((acc, asset) => acc + asset.value, 0);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Carregando estoque...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const lowStockItems = getLowStockItems();
 
   return (
     <div className="space-y-6">
@@ -156,225 +243,247 @@ export const Inventory = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Estoque</h1>
-          <p className="text-muted-foreground">Ativos disponíveis para alocação</p>
+          <p className="text-muted-foreground">
+            Gerencie o estoque da organização: {currentOrganization.name}
+          </p>
         </div>
-        <Button className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Adicionar ao Estoque
-        </Button>
+        
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={handleAddNew} className="flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              Novo Item
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {editingItem ? 'Editar Item' : 'Novo Item'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="name">Nome *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Nome do item"
+                />
+              </div>
+              <div>
+                <Label htmlFor="category">Categoria *</Label>
+                <Input
+                  id="category"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  placeholder="Categoria do item"
+                />
+              </div>
+              <div>
+                <Label htmlFor="quantity">Quantidade *</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  value={formData.quantity}
+                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <Label htmlFor="minQuantity">Quantidade Mínima</Label>
+                <Input
+                  id="minQuantity"
+                  type="number"
+                  value={formData.minQuantity}
+                  onChange={(e) => setFormData({ ...formData, minQuantity: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <Label htmlFor="unitPrice">Preço Unitário *</Label>
+                <Input
+                  id="unitPrice"
+                  type="number"
+                  step="0.01"
+                  value={formData.unitPrice}
+                  onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <Label htmlFor="supplier">Fornecedor</Label>
+                <Input
+                  id="supplier"
+                  value={formData.supplier}
+                  onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
+                  placeholder="Nome do fornecedor"
+                />
+              </div>
+              <div>
+                <Label htmlFor="location">Localização</Label>
+                <Input
+                  id="location"
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  placeholder="Localização do item"
+                />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="description">Descrição</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Descrição do item"
+                />
+              </div>
+              <div className="col-span-2 flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSubmit}>
+                  {editingItem ? 'Atualizar' : 'Criar'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
-                <Laptop className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{notebooks.length}</p>
-                <p className="text-sm text-muted-foreground">Notebooks</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12  dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
-                <Monitor className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{monitors.length}</p>
-                <p className="text-sm text-muted-foreground">Monitores</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
-                <Usb className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{adapters.length}</p>
-                <p className="text-sm text-muted-foreground">Adaptadores</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 dark:bg-yellow-900/20 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">R$ {totalValue.toLocaleString('pt-BR')}</p>
-                <p className="text-sm text-muted-foreground">Valor em Estoque</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Search and Filters */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, número de série ou tipo..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Button variant="outline" className="flex items-center gap-2">
-              <Filter className="w-4 h-4" />
-              Filtros
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Assignment Dialog */}
-      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Alocar Ativo</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {selectedAsset && (
-              <div className="p-4 bg-muted rounded-lg">
-                <h4 className="font-medium">{selectedAsset.name}</h4>
-                <p className="text-sm text-muted-foreground">
-                  {getTypeLabel(selectedAsset.type)} - {selectedAsset.serialNumber}
-                </p>
-              </div>
-            )}
-            
-            <div>
-              <Label htmlFor="person">Selecionar Pessoa</Label>
-              <select
-                id="person"
-                className="w-full p-2 border rounded-md"
-                value={selectedPersonId}
-                onChange={(e) => setSelectedPersonId(e.target.value)}
-              >
-                <option value="">Selecione uma pessoa</option>
-                {people
-                  .filter(p => p.organizationId === currentOrganization?.id && p.status === 'active')
-                  .map((person) => (
-                    <option key={person.id} value={person.id}>
-                      {person.name} - {person.position}
-                    </option>
-                  ))}
-              </select>
-            </div>
-          </div>
-          <div className="flex justify-end space-x-2 mt-4">
-            <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleConfirmAssignment}>
-              Alocar Ativo
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Empty State */}
-      {filteredAssets.length === 0 && (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">
-              {searchTerm ? 'Nenhum item encontrado' : 'Estoque vazio'}
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              {searchTerm 
-                ? 'Tente ajustar os termos da sua busca.' 
-                : 'Não há ativos disponíveis no estoque no momento.'
-              }
+      {/* Low Stock Alert */}
+      {lowStockItems.length > 0 && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardHeader>
+            <CardTitle className="text-orange-800">Itens com Estoque Baixo</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-orange-700 mb-2">
+              {lowStockItems.length} {lowStockItems.length === 1 ? 'item está' : 'itens estão'} com estoque baixo:
             </p>
-            {!searchTerm && (
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Primeiro Item
-              </Button>
-            )}
+            <div className="flex flex-wrap gap-2">
+              {lowStockItems.map((item) => (
+                <Badge key={item.id} variant="destructive">
+                  {item.name} ({item.quantity} restante{item.quantity !== 1 ? 's' : ''})
+                </Badge>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Inventory List */}
-      {filteredAssets.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAssets.map((asset) => (
-            <Card key={asset.id} className="card-hover">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center text-white">
-                      {getTypeIcon(asset.type)}
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{asset.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground">{getTypeLabel(asset.type)}</p>
-                    </div>
-                  </div>
-                  <Badge variant="secondary">Disponível</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {/* Asset Details */}
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Número de Série:</span>
-                      <span className="font-medium">{asset.serialNumber}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Valor:</span>
-                      <span className="font-medium">R$ {asset.value.toLocaleString('pt-BR')}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Condição:</span>
-                      <span className={`font-medium ${getConditionColor(asset.condition)}`}>
-                        {getConditionText(asset.condition)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Data de Compra:</span>
-                      <span className="font-medium">
-                        {new Date(asset.purchaseDate).toLocaleDateString('pt-BR')}
-                      </span>
-                    </div>
-                  </div>
+      {/* Inventory Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Package className="w-5 h-5" />
+            <span>Lista de Itens</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {items.length === 0 ? (
+            <div className="text-center py-8">
+              <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium">Nenhum item encontrado</h3>
+              <p className="text-muted-foreground mb-4">
+                Comece adicionando o primeiro item ao estoque.
+              </p>
+              <Button onClick={handleAddNew}>
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar Primeiro Item
+              </Button>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead>Quantidade</TableHead>
+                  <TableHead>Mín.</TableHead>
+                  <TableHead>Preço Unit.</TableHead>
+                  <TableHead>Fornecedor</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">{item.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{item.category}</Badge>
+                    </TableCell>
+                    <TableCell>{item.quantity}</TableCell>
+                    <TableCell>{item.minQuantity}</TableCell>
+                    <TableCell>R$ {item.unitPrice.toFixed(2)}</TableCell>
+                    <TableCell>{item.supplier || '-'}</TableCell>
+                    <TableCell>
+                      <Badge variant={item.quantity <= item.minQuantity ? 'destructive' : 'default'}>
+                        {item.quantity <= item.minQuantity ? 'Estoque Baixo' : 'OK'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(item)}
+                          className="h-8 w-8"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(item)}
+                          className="h-8 w-8 text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
-                  {/* Action Buttons */}
-                  <div className="pt-4 border-t">
-                    <Button 
-                      className="w-full" 
-                      size="sm"
-                      onClick={() => handleAssignAsset(asset)}
-                    >
-                      <User className="w-4 h-4 mr-2" />
-                      Alocar para Pessoa
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      {/* Summary Stats */}
+      {items.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Resumo do Estoque</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 rounded-lg bg-muted/50">
+                <p className="text-2xl font-bold text-primary">{items.length}</p>
+                <p className="text-sm text-muted-foreground">Total de Itens</p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-muted/50">
+                <p className="text-2xl font-bold text-green-600">
+                  {items.reduce((acc, item) => acc + item.quantity, 0)}
+                </p>
+                <p className="text-sm text-muted-foreground">Quantidade Total</p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-muted/50">
+                <p className="text-2xl font-bold text-orange-600">
+                  {lowStockItems.length}
+                </p>
+                <p className="text-sm text-muted-foreground">Estoque Baixo</p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-muted/50">
+                <p className="text-2xl font-bold text-blue-600">
+                  R$ {items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0).toFixed(2)}
+                </p>
+                <p className="text-sm text-muted-foreground">Valor Total</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

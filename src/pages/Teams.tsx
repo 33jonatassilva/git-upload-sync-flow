@@ -9,22 +9,27 @@ import { teamsService } from '@/services/teamsService';
 import { TeamDialog } from '@/components/teams/TeamDialog';
 import { Building2, Plus, Users, Calendar, Edit, Trash2, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useApp } from '@/contexts/AppContext';
 
 export const Teams = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { currentOrganization } = useApp();
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<Team | undefined>();
 
-  // Para demonstração, usando uma organização padrão
-  const organizationId = 'org-1';
-
   const loadTeams = async () => {
+    if (!currentOrganization) {
+      setTeams([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const teamsData = teamsService.getAll(organizationId);
+      const teamsData = teamsService.getAll(currentOrganization.id);
       setTeams(teamsData);
     } catch (error) {
       toast({
@@ -39,7 +44,7 @@ export const Teams = () => {
 
   useEffect(() => {
     loadTeams();
-  }, []);
+  }, [currentOrganization]);
 
   const handleDelete = async (team: Team) => {
     if (confirm(`Tem certeza que deseja excluir o time "${team.name}"? Esta ação não pode ser desfeita.`)) {
@@ -66,6 +71,14 @@ export const Teams = () => {
   };
 
   const handleAddNew = () => {
+    if (!currentOrganization) {
+      toast({
+        title: 'Erro!',
+        description: 'Selecione uma organização primeiro.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setEditingTeam(undefined);
     setDialogOpen(true);
   };
@@ -74,6 +87,21 @@ export const Teams = () => {
     setDialogOpen(false);
     setEditingTeam(undefined);
   };
+
+  if (!currentOrganization) {
+    return (
+      <div className="text-center py-12">
+        <Building2 className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Nenhuma organização selecionada</h2>
+        <p className="text-muted-foreground mb-4">
+          Selecione uma organização para gerenciar os times.
+        </p>
+        <Button onClick={() => navigate('/organizations')}>
+          Ir para Organizações
+        </Button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -92,7 +120,9 @@ export const Teams = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Times</h1>
-          <p className="text-muted-foreground">Gerencie os times e departamentos da empresa</p>
+          <p className="text-muted-foreground">
+            Gerencie os times da organização: {currentOrganization.name}
+          </p>
         </div>
         <Button onClick={handleAddNew} className="flex items-center gap-2">
           <Plus className="w-4 h-4" />
@@ -182,7 +212,7 @@ export const Teams = () => {
             <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium">Nenhum time encontrado</h3>
             <p className="text-muted-foreground mb-4">
-              Comece criando o primeiro time da sua organização.
+              Comece criando o primeiro time da organização {currentOrganization.name}.
             </p>
             <Button onClick={handleAddNew}>
               <Plus className="w-4 h-4 mr-2" />
@@ -230,7 +260,7 @@ export const Teams = () => {
         open={dialogOpen}
         onOpenChange={handleDialogClose}
         team={editingTeam}
-        organizationId={organizationId}
+        organizationId={currentOrganization.id}
         onSuccess={() => {
           loadTeams();
           handleDialogClose();
