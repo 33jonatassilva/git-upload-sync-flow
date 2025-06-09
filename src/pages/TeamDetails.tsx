@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +13,6 @@ import {
 } from '@/components/ui/table';
 import { Team, Person } from '@/types';
 import { teamsService } from '@/services/teamsService';
-import { databaseService } from '@/services/databaseService';
 import { TeamDialog } from '@/components/teams/TeamDialog';
 import { 
   ArrowLeft, 
@@ -43,7 +41,7 @@ export const TeamDetails = () => {
     setLoading(true);
     try {
       const teamData = teamsService.getById(id);
-      const membersData = teamsService.getTeamMembers(id);
+      const membersData = teamsService.getTeamMembers(id) as Person[];
       
       setTeam(teamData);
       setMembers(membersData);

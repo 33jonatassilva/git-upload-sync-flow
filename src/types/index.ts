@@ -1,4 +1,3 @@
-
 export interface Organization {
   id: string;
   name: string;
@@ -14,6 +13,7 @@ export interface Team {
   peopleCount: number;
   createdAt: string;
   organizationId: string;
+  managerId?: string;
 }
 
 export interface Person {

@@ -63,10 +63,11 @@ export const TeamDialog = ({ open, onOpenChange, team, organizationId, onSuccess
           description: 'As informações do time foram atualizadas com sucesso.',
         });
       } else {
-        // Create team
+        // Create team - garantir que name está definido
         const { teamsService } = await import('@/services/teamsService');
         teamsService.create({
-          ...data,
+          name: data.name, // garantir que name está definido
+          description: data.description,
           organizationId,
         });
         toast({
