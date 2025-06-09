@@ -14,6 +14,7 @@ services:
       - ./database:/app/database
     environment:
       - NODE_ENV=development
+    restart: unless-stopped
 
 volumes:
   sqlite_data:
