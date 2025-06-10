@@ -10,15 +10,17 @@ interface StatCardProps {
   icon: LucideIcon;
   trend?: 'up' | 'down' | 'stable';
   trendValue?: string;
-  color?: 'blue' | 'green' | 'yellow' | 'red' | 'purple';
+  color?: 'blue' | 'green' | 'yellow' | 'red' | 'purple' | 'orange' | 'pink';
 }
 
 const colorVariants = {
-  blue: 'text-blue-600 bg-blue-100 dark:bg-blue-900/20',
-  green: 'text-green-600 bg-green-100 dark:bg-green-900/20',
-  yellow: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/20',
-  red: 'text-red-600 bg-red-100 dark:bg-red-900/20',
-  purple: 'text-purple-600 bg-purple-100 dark:bg-purple-900/20',
+  blue: 'text-blue-500 bg-blue-100 dark:bg-blue-900/20',
+  green: 'text-green-500 bg-green-100 dark:bg-green-900/20',
+  yellow: 'text-yellow-500 bg-yellow-100 dark:bg-yellow-900/20',
+  red: 'text-red-500 bg-red-100 dark:bg-red-900/20',
+  purple: 'text-purple-500 bg-purple-100 dark:bg-purple-900/20',
+  orange: 'text-orange-500 bg-orange-100 dark:bg-orange-900/20',
+  pink: 'text-pink-500 bg-pink-100 dark:bg-pink-900/20',
 };
 
 export const StatCard = ({ 

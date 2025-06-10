@@ -152,17 +152,6 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
       {/* Import/Export Actions */}
       <div className="p-2 border-t border-sidebar-border space-y-1">
         <button
-          onClick={handleExport}
-          className="w-full flex items-center px-3 py-2 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
-        >
-          <Download className={cn(
-            "flex-shrink-0 text-green-500",
-            isOpen ? "w-4 h-4 mr-3" : "w-4 h-4"
-          )} />
-          {isOpen && <span>Exportar Dados</span>}
-        </button>
-        
-        <button
           onClick={handleImport}
           className="w-full flex items-center px-3 py-2 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
         >
@@ -171,6 +160,17 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
             isOpen ? "w-4 h-4 mr-3" : "w-4 h-4"
           )} />
           {isOpen && <span>Importar Dados</span>}
+        </button>
+        
+        <button
+          onClick={handleExport}
+          className="w-full flex items-center px-3 py-2 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
+        >
+          <Download className={cn(
+            "flex-shrink-0 text-green-500",
+            isOpen ? "w-4 h-4 mr-3" : "w-4 h-4"
+          )} />
+          {isOpen && <span>Exportar Dados</span>}
         </button>
       </div>
 

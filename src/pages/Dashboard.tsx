@@ -87,10 +87,26 @@ export const Dashboard = () => {
   }, [currentOrganization]);
 
   const handleQuickAction = (action: string) => {
-    toast({
-      title: 'Funcionalidade em desenvolvimento',
-      description: `A ação "${action}" será implementada em breve.`,
-    });
+    // Navigate to respective pages
+    switch (action) {
+      case 'Nova Pessoa':
+        window.location.href = '/people';
+        break;
+      case 'Nova Licença':
+        window.location.href = '/licenses';
+        break;
+      case 'Novo Ativo':
+        window.location.href = '/assets';
+        break;
+      case 'Novo Time':
+        window.location.href = '/teams';
+        break;
+      default:
+        toast({
+          title: 'Redirecionando...',
+          description: `Abrindo página para ${action}.`,
+        });
+    }
   };
 
   if (!currentOrganization) {
@@ -128,7 +144,7 @@ export const Dashboard = () => {
           icon={Shield}
           color="green"
           trend={stats.expiringLicenses > 0 ? "down" : "stable"}
-          trendValue={stats.expiringLicenses > 0 ? `${stats.expiringLicenses} vencendo` : "Todas ok"}
+          trendValue={stats.expiringLicenses > 0 ? `${stats.expiringLicenses} vencendo` : "Sem alertas"}
         />
         
         <StatCard
@@ -146,7 +162,7 @@ export const Dashboard = () => {
           value={stats.totalTeams}
           subtitle="Departamentos"
           icon={Building2}
-          color="yellow"
+          color="orange"
           trend="stable"
           trendValue="Ativos"
         />
@@ -214,7 +230,7 @@ export const Dashboard = () => {
                   </div>
                 ))
               ) : (
-                <p className="text-readable-muted text-center py-4">Todas as licenças estão em dia</p>
+                <p className="text-readable-muted text-center py-4">Nenhuma licença requer atenção</p>
               )}
             </div>
           </CardContent>
@@ -270,7 +286,7 @@ export const Dashboard = () => {
                 onClick={() => handleQuickAction('Nova Pessoa')}
               >
                 <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/20">
-                  <Users className="w-6 h-6 text-blue-600" />
+                  <Users className="w-6 h-6 text-blue-500" />
                 </div>
                 <span className="text-sm font-medium text-readable">Nova Pessoa</span>
               </Button>
@@ -281,7 +297,7 @@ export const Dashboard = () => {
                 onClick={() => handleQuickAction('Nova Licença')}
               >
                 <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/20">
-                  <Shield className="w-6 h-6 text-green-600" />
+                  <Shield className="w-6 h-6 text-green-500" />
                 </div>
                 <span className="text-sm font-medium text-readable">Nova Licença</span>
               </Button>
@@ -292,7 +308,7 @@ export const Dashboard = () => {
                 onClick={() => handleQuickAction('Novo Ativo')}
               >
                 <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/20">
-                  <Laptop className="w-6 h-6 text-purple-600" />
+                  <Laptop className="w-6 h-6 text-purple-500" />
                 </div>
                 <span className="text-sm font-medium text-readable">Novo Ativo</span>
               </Button>
@@ -302,8 +318,8 @@ export const Dashboard = () => {
                 className="p-4 h-auto flex flex-col items-center space-y-2 hover:bg-primary/10"
                 onClick={() => handleQuickAction('Novo Time')}
               >
-                <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/20">
-                  <Building2 className="w-6 h-6 text-yellow-600" />
+                <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/20">
+                  <Building2 className="w-6 h-6 text-orange-500" />
                 </div>
                 <span className="text-sm font-medium text-readable">Novo Time</span>
               </Button>
