@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -13,11 +14,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Asset } from '@/types';
+import { Asset, Person } from '@/types';
 import { assetsService } from '@/services/assetsService';
 import { peopleService } from '@/services/peopleService';
-import { Person } from '@/types';
-import { Building2, Plus, Edit, Trash2, Package } from 'lucide-react';
+import { Laptop, Plus, Edit, Trash2, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/contexts/AppContext';
 
@@ -32,9 +32,12 @@ export const Assets = () => {
   const [formData, setFormData] = useState({
     name: '',
     serialNumber: '',
-    type: 'notebook' as Asset['type'],
-    status: 'available' as Asset['status'],
-    assignedTo: '',
+    type: '',
+    status: 'available',
+    condition: 'good',
+    value: '',
+    purchaseDate: new Date().toISOString().split('T')[0],
+    assignedTo: ''
   });
 
   const loadData = async () => {
@@ -76,7 +79,7 @@ export const Assets = () => {
       return;
     }
 
-    if (!formData.name.trim() || !formData.serialNumber.trim()) {
+    if (!formData.name.trim() || !formData.serialNumber.trim() || !formData.type || !formData.value) {
       toast({
         title: 'Erro!',
         description: 'Preencha todos os campos obrigatórios.',
@@ -90,8 +93,11 @@ export const Assets = () => {
         assetsService.update(editingAsset.id, {
           name: formData.name,
           serialNumber: formData.serialNumber,
-          type: formData.type,
-          status: formData.status,
+          type: formData.type as Asset['type'],
+          status: formData.status as Asset['status'],
+          condition: formData.condition as Asset['condition'],
+          value: parseFloat(formData.value),
+          purchaseDate: formData.purchaseDate,
           assignedTo: formData.assignedTo || undefined,
         });
         toast({
@@ -102,8 +108,11 @@ export const Assets = () => {
         assetsService.create({
           name: formData.name,
           serialNumber: formData.serialNumber,
-          type: formData.type,
-          status: formData.status,
+          type: formData.type as Asset['type'],
+          status: formData.status as Asset['status'],
+          condition: formData.condition as Asset['condition'],
+          value: parseFloat(formData.value),
+          purchaseDate: formData.purchaseDate,
           organizationId: currentOrganization.id,
           assignedTo: formData.assignedTo || undefined,
         });
@@ -116,9 +125,12 @@ export const Assets = () => {
       setFormData({ 
         name: '', 
         serialNumber: '', 
-        type: 'notebook',
-        status: 'available',
-        assignedTo: ''
+        type: '', 
+        status: 'available', 
+        condition: 'good',
+        value: '',
+        purchaseDate: new Date().toISOString().split('T')[0],
+        assignedTo: '' 
       });
       setEditingAsset(null);
       setDialogOpen(false);
@@ -139,7 +151,10 @@ export const Assets = () => {
       serialNumber: asset.serialNumber,
       type: asset.type,
       status: asset.status,
-      assignedTo: asset.assignedTo || '',
+      condition: asset.condition,
+      value: asset.value.toString(),
+      purchaseDate: asset.purchaseDate,
+      assignedTo: asset.assignedTo || ''
     });
     setDialogOpen(true);
   };
@@ -173,7 +188,7 @@ export const Assets = () => {
       return;
     }
     setEditingAsset(null);
-    setFormData({ name: '', serialNumber: '', type: 'notebook', status: 'available', assignedTo: '' });
+    setFormData({ name: '', serialNumber: '', type: '', status: 'available', condition: 'good', value: '', purchaseDate: new Date().toISOString().split('T')[0], assignedTo: '' });
     setDialogOpen(true);
   };
 
@@ -245,7 +260,7 @@ export const Assets = () => {
               </div>
               <div>
                 <Label htmlFor="type">Tipo *</Label>
-                <Select value={formData.type} onValueChange={(value: Asset['type']) => setFormData({ ...formData, type: value })}>
+                <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
@@ -258,27 +273,61 @@ export const Assets = () => {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="status">Status *</Label>
-                <Select value={formData.status} onValueChange={(value: Asset['status']) => setFormData({ ...formData, status: value })}>
+                <Label htmlFor="status">Status</Label>
+                <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="available">Disponível</SelectItem>
-                    <SelectItem value="assigned">Atribuído</SelectItem>
-                    <SelectItem value="maintenance">Em Manutenção</SelectItem>
+                    <SelectItem value="allocated">Alocado</SelectItem>
+                    <SelectItem value="maintenance">Manutenção</SelectItem>
                     <SelectItem value="retired">Aposentado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="assignedTo">Atribuído Para</Label>
+                <Label htmlFor="condition">Condição</Label>
+                <Select value={formData.condition} onValueChange={(value) => setFormData({ ...formData, condition: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a condição" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="excellent">Excelente</SelectItem>
+                    <SelectItem value="good">Boa</SelectItem>
+                    <SelectItem value="fair">Regular</SelectItem>
+                    <SelectItem value="poor">Ruim</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="value">Valor *</Label>
+                <Input
+                  id="value"
+                  type="number"
+                  step="0.01"
+                  value={formData.value}
+                  onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <Label htmlFor="purchaseDate">Data de Compra</Label>
+                <Input
+                  id="purchaseDate"
+                  type="date"
+                  value={formData.purchaseDate}
+                  onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="assignedTo">Atribuído para</Label>
                 <Select value={formData.assignedTo} onValueChange={(value) => setFormData({ ...formData, assignedTo: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione uma pessoa (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="unassigned">Não Atribuído</SelectItem>
+                    <SelectItem value="unassigned">Não atribuído</SelectItem>
                     {people.map((person) => (
                       <SelectItem key={person.id} value={person.id}>
                         {person.name}
@@ -304,14 +353,14 @@ export const Assets = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Package className="w-5 h-5" />
+            <Laptop className="w-5 h-5" />
             <span>Lista de Ativos</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           {assets.length === 0 ? (
             <div className="text-center py-8">
-              <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <Laptop className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium">Nenhum ativo encontrado</h3>
               <p className="text-muted-foreground mb-4">
                 Comece adicionando o primeiro ativo da organização.
@@ -328,8 +377,9 @@ export const Assets = () => {
                   <TableHead>Nome</TableHead>
                   <TableHead>Número de Série</TableHead>
                   <TableHead>Tipo</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Atribuído a</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Atribuído Para</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -339,18 +389,16 @@ export const Assets = () => {
                     <TableCell className="font-medium">{asset.name}</TableCell>
                     <TableCell>{asset.serialNumber}</TableCell>
                     <TableCell>{asset.type}</TableCell>
+                     <TableCell>{asset.value}</TableCell>
+                    <TableCell>{asset.assignedToName || <span className="text-muted-foreground">Não atribuído</span>}</TableCell>
                     <TableCell>
-                      {asset.status === 'available' && <div className="text-green-500">Disponível</div>}
-                      {asset.status === 'assigned' && <div className="text-blue-500">Atribuído</div>}
-                      {asset.status === 'maintenance' && <div className="text-yellow-500">Em Manutenção</div>}
-                      {asset.status === 'retired' && <div className="text-gray-500">Aposentado</div>}
-                    </TableCell>
-                    <TableCell>
-                      {asset.assignedTo === 'unassigned' ? (
-                        <span className="text-muted-foreground">Não Atribuído</span>
-                      ) : (
-                        people.find(p => p.id === asset.assignedTo)?.name || 'N/A'
-                      )}
+                      <Badge variant={asset.status === 'available' ? 'default' : 
+                                   asset.status === 'allocated' ? 'secondary' : 
+                                   asset.status === 'maintenance' ? 'destructive' : 'outline'}>
+                        {asset.status === 'available' ? 'Disponível' : 
+                         asset.status === 'allocated' ? 'Alocado' : 
+                         asset.status === 'maintenance' ? 'Manutenção' : 'Aposentado'}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-1">
@@ -400,15 +448,15 @@ export const Assets = () => {
               </div>
               <div className="text-center p-4 rounded-lg bg-muted/50">
                 <p className="text-2xl font-bold text-blue-600">
-                  {assets.filter(a => a.status === 'assigned').length}
+                  {assets.filter(a => a.status === 'allocated').length}
                 </p>
-                <p className="text-sm text-muted-foreground">Atribuídos</p>
+                <p className="text-sm text-muted-foreground">Alocados</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-muted/50">
-                <p className="text-2xl font-bold text-yellow-600">
-                  {assets.filter(a => a.status === 'maintenance').length}
+                <p className="text-2xl font-bold text-orange-600">
+                  {assets.reduce((acc, asset) => acc + asset.value, 0).toFixed(2)}
                 </p>
-                <p className="text-sm text-muted-foreground">Em Manutenção</p>
+                <p className="text-sm text-muted-foreground">Valor Total</p>
               </div>
             </div>
           </CardContent>

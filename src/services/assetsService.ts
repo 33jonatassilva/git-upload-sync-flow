@@ -1,31 +1,28 @@
 
-import { db } from '@/lib/database';
 import { Asset } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface CreateAssetData {
   name: string;
-  type: Asset['type'];
   serialNumber: string;
+  type: Asset['type'];
+  status: Asset['status'];
+  organizationId: string;
+  assignedTo?: string;
   value: number;
   purchaseDate: string;
-  status: Asset['status'];
   condition: Asset['condition'];
-  notes?: string;
-  assignedTo?: string;
-  organizationId: string;
 }
 
 export interface UpdateAssetData {
   name?: string;
-  type?: Asset['type'];
   serialNumber?: string;
+  type?: Asset['type'];
+  status?: Asset['status'];
+  assignedTo?: string;
   value?: number;
   purchaseDate?: string;
-  status?: Asset['status'];
   condition?: Asset['condition'];
-  notes?: string;
-  assignedTo?: string;
 }
 
 // Helper para acessar dados do localStorage
@@ -51,25 +48,23 @@ export const assetsService = {
     return assets
       .filter(asset => asset.organization_id === organizationId)
       .map(asset => {
-        const assignedPerson = asset.assigned_to ? 
-          people.find(p => p.id === asset.assigned_to) : null;
+        const assignedPerson = asset.assigned_to ? people.find(p => p.id === asset.assigned_to) : null;
         
         return {
           id: asset.id,
           name: asset.name,
           type: asset.type,
           serialNumber: asset.serial_number,
-          value: asset.value,
-          purchaseDate: asset.purchase_date,
           status: asset.status,
           condition: asset.condition,
-          notes: asset.notes,
+          value: asset.value,
+          purchaseDate: asset.purchase_date,
           assignedTo: asset.assigned_to,
           assignedToName: assignedPerson?.name,
           organizationId: asset.organization_id
         };
       })
-      .sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
+      .sort((a, b) => a.name.localeCompare(b.name));
   },
 
   getById: (id: string): Asset | null => {
@@ -79,19 +74,17 @@ export const assetsService = {
     
     if (!asset) return null;
     
-    const assignedPerson = asset.assigned_to ? 
-      people.find(p => p.id === asset.assigned_to) : null;
+    const assignedPerson = asset.assigned_to ? people.find(p => p.id === asset.assigned_to) : null;
     
     return {
       id: asset.id,
       name: asset.name,
       type: asset.type,
       serialNumber: asset.serial_number,
-      value: asset.value,
-      purchaseDate: asset.purchase_date,
       status: asset.status,
       condition: asset.condition,
-      notes: asset.notes,
+      value: asset.value,
+      purchaseDate: asset.purchase_date,
       assignedTo: asset.assigned_to,
       assignedToName: assignedPerson?.name,
       organizationId: asset.organization_id
@@ -105,19 +98,17 @@ export const assetsService = {
     const assets = getTableData('assets');
     const people = getTableData('people');
     
-    const assignedPerson = data.assignedTo ? 
-      people.find(p => p.id === data.assignedTo) : null;
+    const assignedPerson = data.assignedTo ? people.find(p => p.id === data.assignedTo) : null;
     
     const newAsset = {
       id,
       name: data.name,
       type: data.type,
       serial_number: data.serialNumber,
-      value: data.value,
-      purchase_date: data.purchaseDate,
       status: data.status,
       condition: data.condition,
-      notes: data.notes || null,
+      value: data.value,
+      purchase_date: data.purchaseDate,
       assigned_to: data.assignedTo || null,
       organization_id: data.organizationId,
       created_at: now,
@@ -132,11 +123,10 @@ export const assetsService = {
       name: data.name,
       type: data.type,
       serialNumber: data.serialNumber,
-      value: data.value,
-      purchaseDate: data.purchaseDate,
       status: data.status,
       condition: data.condition,
-      notes: data.notes,
+      value: data.value,
+      purchaseDate: data.purchaseDate,
       assignedTo: data.assignedTo,
       assignedToName: assignedPerson?.name,
       organizationId: data.organizationId
@@ -153,13 +143,12 @@ export const assetsService = {
     const asset = assets[assetIndex];
     
     if (data.name !== undefined) asset.name = data.name;
-    if (data.type !== undefined) asset.type = data.type;
     if (data.serialNumber !== undefined) asset.serial_number = data.serialNumber;
-    if (data.value !== undefined) asset.value = data.value;
-    if (data.purchaseDate !== undefined) asset.purchase_date = data.purchaseDate;
+    if (data.type !== undefined) asset.type = data.type;
     if (data.status !== undefined) asset.status = data.status;
     if (data.condition !== undefined) asset.condition = data.condition;
-    if (data.notes !== undefined) asset.notes = data.notes;
+    if (data.value !== undefined) asset.value = data.value;
+    if (data.purchaseDate !== undefined) asset.purchase_date = data.purchaseDate;
     if (data.assignedTo !== undefined) asset.assigned_to = data.assignedTo;
     asset.updated_at = now;
     
@@ -171,40 +160,5 @@ export const assetsService = {
     const assets = getTableData('assets');
     const filteredAssets = assets.filter(a => a.id !== id);
     saveTableData('assets', filteredAssets);
-  },
-
-  getAvailable: (organizationId: string): Asset[] => {
-    return assetsService.getAll(organizationId)
-      .filter(asset => asset.status === 'available');
-  },
-
-  assignToUser: (assetId: string, userId: string): void => {
-    const assets = getTableData('assets');
-    const assetIndex = assets.findIndex(a => a.id === assetId);
-    
-    if (assetIndex === -1) return;
-    
-    const asset = assets[assetIndex];
-    asset.assigned_to = userId;
-    asset.status = 'allocated';
-    asset.updated_at = new Date().toISOString();
-    
-    assets[assetIndex] = asset;
-    saveTableData('assets', assets);
-  },
-
-  unassignFromUser: (assetId: string): void => {
-    const assets = getTableData('assets');
-    const assetIndex = assets.findIndex(a => a.id === assetId);
-    
-    if (assetIndex === -1) return;
-    
-    const asset = assets[assetIndex];
-    asset.assigned_to = null;
-    asset.status = 'available';
-    asset.updated_at = new Date().toISOString();
-    
-    assets[assetIndex] = asset;
-    saveTableData('assets', assets);
   }
 };

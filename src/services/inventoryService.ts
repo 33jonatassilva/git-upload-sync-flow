@@ -1,16 +1,25 @@
 
-import { db } from '@/lib/database';
-import { InventoryItem } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  category: string;
+  quantity: number;
+  unitPrice: number;
+  totalValue: number;
+  supplier: string;
+  location: string;
+  organizationId: string;
+}
 
 export interface CreateInventoryItemData {
   name: string;
   category: string;
   quantity: number;
-  minQuantity: number;
-  location: string;
-  costPerUnit: number;
+  unitPrice: number;
   supplier: string;
+  location: string;
   organizationId: string;
 }
 
@@ -18,10 +27,9 @@ export interface UpdateInventoryItemData {
   name?: string;
   category?: string;
   quantity?: number;
-  minQuantity?: number;
-  location?: string;
-  costPerUnit?: number;
+  unitPrice?: number;
   supplier?: string;
+  location?: string;
 }
 
 // Helper para acessar dados do localStorage
@@ -50,15 +58,13 @@ export const inventoryService = {
         name: item.name,
         category: item.category,
         quantity: item.quantity,
-        minQuantity: item.min_quantity,
-        location: item.location,
-        costPerUnit: item.cost_per_unit,
+        unitPrice: item.unit_price,
+        totalValue: item.quantity * item.unit_price,
         supplier: item.supplier,
-        organizationId: item.organization_id,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at
+        location: item.location,
+        organizationId: item.organization_id
       }))
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      .sort((a, b) => a.name.localeCompare(b.name));
   },
 
   getById: (id: string): InventoryItem | null => {
@@ -72,13 +78,11 @@ export const inventoryService = {
       name: item.name,
       category: item.category,
       quantity: item.quantity,
-      minQuantity: item.min_quantity,
-      location: item.location,
-      costPerUnit: item.cost_per_unit,
+      unitPrice: item.unit_price,
+      totalValue: item.quantity * item.unit_price,
       supplier: item.supplier,
-      organizationId: item.organization_id,
-      createdAt: item.created_at,
-      updatedAt: item.updated_at
+      location: item.location,
+      organizationId: item.organization_id
     };
   },
 
@@ -87,15 +91,15 @@ export const inventoryService = {
     const now = new Date().toISOString();
     
     const inventory = getTableData('inventory');
+    
     const newItem = {
       id,
       name: data.name,
       category: data.category,
       quantity: data.quantity,
-      min_quantity: data.minQuantity,
-      location: data.location,
-      cost_per_unit: data.costPerUnit,
+      unit_price: data.unitPrice,
       supplier: data.supplier,
+      location: data.location,
       organization_id: data.organizationId,
       created_at: now,
       updated_at: now
@@ -109,13 +113,11 @@ export const inventoryService = {
       name: data.name,
       category: data.category,
       quantity: data.quantity,
-      minQuantity: data.minQuantity,
-      location: data.location,
-      costPerUnit: data.costPerUnit,
+      unitPrice: data.unitPrice,
+      totalValue: data.quantity * data.unitPrice,
       supplier: data.supplier,
-      organizationId: data.organizationId,
-      createdAt: now,
-      updatedAt: now
+      location: data.location,
+      organizationId: data.organizationId
     };
   },
 
@@ -131,10 +133,9 @@ export const inventoryService = {
     if (data.name !== undefined) item.name = data.name;
     if (data.category !== undefined) item.category = data.category;
     if (data.quantity !== undefined) item.quantity = data.quantity;
-    if (data.minQuantity !== undefined) item.min_quantity = data.minQuantity;
-    if (data.location !== undefined) item.location = data.location;
-    if (data.costPerUnit !== undefined) item.cost_per_unit = data.costPerUnit;
+    if (data.unitPrice !== undefined) item.unit_price = data.unitPrice;
     if (data.supplier !== undefined) item.supplier = data.supplier;
+    if (data.location !== undefined) item.location = data.location;
     item.updated_at = now;
     
     inventory[itemIndex] = item;
@@ -145,24 +146,5 @@ export const inventoryService = {
     const inventory = getTableData('inventory');
     const filteredInventory = inventory.filter(i => i.id !== id);
     saveTableData('inventory', filteredInventory);
-  },
-
-  getLowStock: (organizationId: string): InventoryItem[] => {
-    return inventoryService.getAll(organizationId)
-      .filter(item => item.quantity <= item.minQuantity);
-  },
-
-  updateQuantity: (id: string, quantity: number): void => {
-    const inventory = getTableData('inventory');
-    const itemIndex = inventory.findIndex(i => i.id === id);
-    
-    if (itemIndex === -1) return;
-    
-    const item = inventory[itemIndex];
-    item.quantity = quantity;
-    item.updated_at = new Date().toISOString();
-    
-    inventory[itemIndex] = item;
-    saveTableData('inventory', inventory);
   }
 };

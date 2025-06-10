@@ -251,7 +251,7 @@ export const People = () => {
                     <SelectValue placeholder="Selecione um time (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sem time</SelectItem>
+                    <SelectItem value="no-team">Sem time</SelectItem>
                     {teams.map((team) => (
                       <SelectItem key={team.id} value={team.id}>
                         {team.name}

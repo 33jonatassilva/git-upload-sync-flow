@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
   Table,
@@ -13,53 +12,42 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { InventoryItem } from '@/types';
-import { inventoryService } from '@/services/inventoryService';
-import { Building2, PackagePlus, Edit, Trash2 } from 'lucide-react';
+import { inventoryService, InventoryItem as ServiceInventoryItem } from '@/services/inventoryService';
+import { Package, Plus, Edit, Trash2, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/contexts/AppContext';
-import { Plus } from 'lucide-react';
-
-interface InventoryItem {
-  id: string;
-  name: string;
-  category: 'hardware' | 'software' | 'license' | 'other';
-  quantity: number;
-  unitPrice: number;
-  location: string;
-  organizationId: string;
-}
 
 export const Inventory = () => {
   const { toast } = useToast();
   const { currentOrganization } = useApp();
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [items, setItems] = useState<ServiceInventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [editingItem, setEditingItem] = useState<ServiceInventoryItem | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    category: 'hardware' as InventoryItem['category'],
-    quantity: 0,
-    unitPrice: 0,
+    category: '',
+    quantity: '',
+    unitPrice: '',
+    supplier: '',
     location: '',
   });
 
   const loadData = async () => {
     if (!currentOrganization) {
-      setInventory([]);
+      setItems([]);
       setLoading(false);
       return;
     }
 
     setLoading(true);
     try {
-      const inventoryData = inventoryService.getAll(currentOrganization.id);
-      setInventory(inventoryData);
+      const itemsData = inventoryService.getAll(currentOrganization.id);
+      setItems(itemsData);
     } catch (error) {
       toast({
         title: 'Erro!',
-        description: 'Não foi possível carregar o estoque.',
+        description: 'Não foi possível carregar os dados.',
         variant: 'destructive',
       });
     } finally {
@@ -81,10 +69,10 @@ export const Inventory = () => {
       return;
     }
 
-    if (!formData.name.trim() || formData.quantity < 0 || formData.unitPrice < 0) {
+    if (!formData.name.trim() || !formData.category.trim() || !formData.quantity || !formData.unitPrice) {
       toast({
         title: 'Erro!',
-        description: 'Preencha todos os campos obrigatórios corretamente.',
+        description: 'Preencha todos os campos obrigatórios.',
         variant: 'destructive',
       });
       return;
@@ -95,8 +83,9 @@ export const Inventory = () => {
         inventoryService.update(editingItem.id, {
           name: formData.name,
           category: formData.category,
-          quantity: formData.quantity,
-          unitPrice: formData.unitPrice,
+          quantity: parseInt(formData.quantity),
+          unitPrice: parseFloat(formData.unitPrice),
+          supplier: formData.supplier,
           location: formData.location,
         });
         toast({
@@ -107,8 +96,9 @@ export const Inventory = () => {
         inventoryService.create({
           name: formData.name,
           category: formData.category,
-          quantity: formData.quantity,
-          unitPrice: formData.unitPrice,
+          quantity: parseInt(formData.quantity),
+          unitPrice: parseFloat(formData.unitPrice),
+          supplier: formData.supplier,
           location: formData.location,
           organizationId: currentOrganization.id,
         });
@@ -118,13 +108,7 @@ export const Inventory = () => {
         });
       }
 
-      setFormData({ 
-        name: '', 
-        category: 'hardware', 
-        quantity: 0, 
-        unitPrice: 0,
-        location: '' 
-      });
+      setFormData({ name: '', category: '', quantity: '', unitPrice: '', supplier: '', location: '' });
       setEditingItem(null);
       setDialogOpen(false);
       loadData();
@@ -137,31 +121,32 @@ export const Inventory = () => {
     }
   };
 
-  const handleEdit = (item: InventoryItem) => {
+  const handleEdit = (item: ServiceInventoryItem) => {
     setEditingItem(item);
     setFormData({
       name: item.name,
       category: item.category,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
+      quantity: item.quantity.toString(),
+      unitPrice: item.unitPrice.toString(),
+      supplier: item.supplier,
       location: item.location,
     });
     setDialogOpen(true);
   };
 
-  const handleDelete = (item: InventoryItem) => {
-    if (confirm(`Tem certeza que deseja excluir "${item.name}" do estoque? Esta ação não pode ser desfeita.`)) {
+  const handleDelete = (item: ServiceInventoryItem) => {
+    if (confirm(`Tem certeza que deseja excluir "${item.name}"? Esta ação não pode ser desfeita.`)) {
       try {
         inventoryService.delete(item.id);
         toast({
           title: 'Item excluído!',
-          description: 'O item foi excluído do estoque com sucesso.',
+          description: 'O item foi excluído com sucesso.',
         });
         loadData();
       } catch (error) {
         toast({
           title: 'Erro!',
-          description: 'Não foi possível excluir o item do estoque.',
+          description: 'Não foi possível excluir o item.',
           variant: 'destructive',
         });
       }
@@ -178,7 +163,7 @@ export const Inventory = () => {
       return;
     }
     setEditingItem(null);
-    setFormData({ name: '', category: 'hardware', quantity: 0, unitPrice: 0, location: '' });
+    setFormData({ name: '', category: '', quantity: '', unitPrice: '', supplier: '', location: '' });
     setDialogOpen(true);
   };
 
@@ -274,6 +259,15 @@ export const Inventory = () => {
                 />
               </div>
               <div>
+                <Label htmlFor="supplier">Fornecedor</Label>
+                <Input
+                  id="supplier"
+                  value={formData.supplier}
+                  onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
+                  placeholder="Fornecedor do item"
+                />
+              </div>
+              <div>
                 <Label htmlFor="location">Localização</Label>
                 <Input
                   id="location"
@@ -304,7 +298,7 @@ export const Inventory = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {inventory.length === 0 ? (
+          {items.length === 0 ? (
             <div className="text-center py-8">
               <PackagePlus className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium">Nenhum item no estoque</h3>
@@ -324,17 +318,19 @@ export const Inventory = () => {
                   <TableHead>Categoria</TableHead>
                   <TableHead>Quantidade</TableHead>
                   <TableHead>Preço Unitário</TableHead>
+                  <TableHead>Fornecedor</TableHead>
                   <TableHead>Localização</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {inventory.map((item) => (
+                {items.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell>{item.category}</TableCell>
                     <TableCell>{item.quantity}</TableCell>
                     <TableCell>R$ {item.unitPrice.toFixed(2)}</TableCell>
+                    <TableCell>{item.supplier || <span className="text-muted-foreground">Não especificado</span>}</TableCell>
                     <TableCell>{item.location || <span className="text-muted-foreground">Não especificado</span>}</TableCell>
                     <TableCell>
                       <div className="flex space-x-1">
@@ -365,7 +361,7 @@ export const Inventory = () => {
       </Card>
 
       {/* Summary Stats */}
-      {inventory.length > 0 && (
+      {items.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Resumo do Estoque</CardTitle>
@@ -373,18 +369,18 @@ export const Inventory = () => {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="text-center p-4 rounded-lg bg-muted/50">
-                <p className="text-2xl font-bold text-primary">{inventory.length}</p>
+                <p className="text-2xl font-bold text-primary">{items.length}</p>
                 <p className="text-sm text-muted-foreground">Total de Itens</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-muted/50">
                 <p className="text-2xl font-bold text-green-600">
-                  {inventory.reduce((acc, item) => acc + item.quantity, 0)}
+                  {items.reduce((acc, item) => acc + item.quantity, 0)}
                 </p>
                 <p className="text-sm text-muted-foreground">Quantidade Total</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-muted/50">
                 <p className="text-2xl font-bold text-blue-600">
-                  R$ {inventory.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0).toFixed(2)}
+                  R$ {items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0).toFixed(2)}
                 </p>
                 <p className="text-sm text-muted-foreground">Valor Total do Estoque</p>
               </div>
