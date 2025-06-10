@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,8 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -16,57 +13,53 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { InventoryItem } from '@/types';
 import { inventoryService } from '@/services/inventoryService';
-import { Package, Plus, Edit, Trash2, Building2 } from 'lucide-react';
+import { Building2, PackagePlus, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/contexts/AppContext';
+import { Plus } from 'lucide-react';
 
 interface InventoryItem {
   id: string;
   name: string;
-  description?: string;
-  category: string;
+  category: 'hardware' | 'software' | 'license' | 'other';
   quantity: number;
-  minQuantity: number;
   unitPrice: number;
-  supplier?: string;
-  location?: string;
+  location: string;
   organizationId: string;
 }
 
 export const Inventory = () => {
   const { toast } = useToast();
   const { currentOrganization } = useApp();
-  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
-    category: '',
-    quantity: '',
-    minQuantity: '',
-    unitPrice: '',
-    supplier: '',
+    category: 'hardware' as InventoryItem['category'],
+    quantity: 0,
+    unitPrice: 0,
     location: '',
   });
 
   const loadData = async () => {
     if (!currentOrganization) {
-      setItems([]);
+      setInventory([]);
       setLoading(false);
       return;
     }
 
     setLoading(true);
     try {
-      const itemsData = inventoryService.getAll(currentOrganization.id);
-      setItems(itemsData);
+      const inventoryData = inventoryService.getAll(currentOrganization.id);
+      setInventory(inventoryData);
     } catch (error) {
       toast({
         title: 'Erro!',
-        description: 'Não foi possível carregar os dados.',
+        description: 'Não foi possível carregar o estoque.',
         variant: 'destructive',
       });
     } finally {
@@ -88,10 +81,10 @@ export const Inventory = () => {
       return;
     }
 
-    if (!formData.name.trim() || !formData.category.trim() || !formData.quantity || !formData.unitPrice) {
+    if (!formData.name.trim() || formData.quantity < 0 || formData.unitPrice < 0) {
       toast({
         title: 'Erro!',
-        description: 'Preencha todos os campos obrigatórios.',
+        description: 'Preencha todos os campos obrigatórios corretamente.',
         variant: 'destructive',
       });
       return;
@@ -101,12 +94,9 @@ export const Inventory = () => {
       if (editingItem) {
         inventoryService.update(editingItem.id, {
           name: formData.name,
-          description: formData.description,
           category: formData.category,
-          quantity: parseInt(formData.quantity),
-          minQuantity: parseInt(formData.minQuantity) || 0,
-          unitPrice: parseFloat(formData.unitPrice),
-          supplier: formData.supplier,
+          quantity: formData.quantity,
+          unitPrice: formData.unitPrice,
           location: formData.location,
         });
         toast({
@@ -116,12 +106,9 @@ export const Inventory = () => {
       } else {
         inventoryService.create({
           name: formData.name,
-          description: formData.description,
           category: formData.category,
-          quantity: parseInt(formData.quantity),
-          minQuantity: parseInt(formData.minQuantity) || 0,
-          unitPrice: parseFloat(formData.unitPrice),
-          supplier: formData.supplier,
+          quantity: formData.quantity,
+          unitPrice: formData.unitPrice,
           location: formData.location,
           organizationId: currentOrganization.id,
         });
@@ -131,15 +118,12 @@ export const Inventory = () => {
         });
       }
 
-      setFormData({
-        name: '',
-        description: '',
-        category: '',
-        quantity: '',
-        minQuantity: '',
-        unitPrice: '',
-        supplier: '',
-        location: '',
+      setFormData({ 
+        name: '', 
+        category: 'hardware', 
+        quantity: 0, 
+        unitPrice: 0,
+        location: '' 
       });
       setEditingItem(null);
       setDialogOpen(false);
@@ -157,30 +141,27 @@ export const Inventory = () => {
     setEditingItem(item);
     setFormData({
       name: item.name,
-      description: item.description || '',
       category: item.category,
-      quantity: item.quantity.toString(),
-      minQuantity: item.minQuantity.toString(),
-      unitPrice: item.unitPrice.toString(),
-      supplier: item.supplier || '',
-      location: item.location || '',
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      location: item.location,
     });
     setDialogOpen(true);
   };
 
   const handleDelete = (item: InventoryItem) => {
-    if (confirm(`Tem certeza que deseja excluir "${item.name}"? Esta ação não pode ser desfeita.`)) {
+    if (confirm(`Tem certeza que deseja excluir "${item.name}" do estoque? Esta ação não pode ser desfeita.`)) {
       try {
         inventoryService.delete(item.id);
         toast({
           title: 'Item excluído!',
-          description: 'O item foi excluído com sucesso.',
+          description: 'O item foi excluído do estoque com sucesso.',
         });
         loadData();
       } catch (error) {
         toast({
           title: 'Erro!',
-          description: 'Não foi possível excluir o item.',
+          description: 'Não foi possível excluir o item do estoque.',
           variant: 'destructive',
         });
       }
@@ -197,20 +178,9 @@ export const Inventory = () => {
       return;
     }
     setEditingItem(null);
-    setFormData({
-      name: '',
-      description: '',
-      category: '',
-      quantity: '',
-      minQuantity: '',
-      unitPrice: '',
-      supplier: '',
-      location: '',
-    });
+    setFormData({ name: '', category: 'hardware', quantity: 0, unitPrice: 0, location: '' });
     setDialogOpen(true);
   };
-
-  const getLowStockItems = () => items.filter(item => item.quantity <= item.minQuantity);
 
   if (!currentOrganization) {
     return (
@@ -235,8 +205,6 @@ export const Inventory = () => {
     );
   }
 
-  const lowStockItems = getLowStockItems();
-
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -244,7 +212,7 @@ export const Inventory = () => {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Estoque</h1>
           <p className="text-muted-foreground">
-            Gerencie o estoque da organização: {currentOrganization.name}
+            Gerencie os itens de estoque da organização: {currentOrganization.name}
           </p>
         </div>
         
@@ -255,13 +223,13 @@ export const Inventory = () => {
               Novo Item
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>
                 {editingItem ? 'Editar Item' : 'Novo Item'}
               </DialogTitle>
             </DialogHeader>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div>
                 <Label htmlFor="name">Nome *</Label>
                 <Input
@@ -273,31 +241,26 @@ export const Inventory = () => {
               </div>
               <div>
                 <Label htmlFor="category">Categoria *</Label>
-                <Input
-                  id="category"
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  placeholder="Categoria do item"
-                />
+                <Select value={formData.category} onValueChange={(value: InventoryItem['category']) => setFormData({ ...formData, category: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hardware">Hardware</SelectItem>
+                    <SelectItem value="software">Software</SelectItem>
+                    <SelectItem value="license">Licença</SelectItem>
+                    <SelectItem value="other">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="quantity">Quantidade *</Label>
                 <Input
                   id="quantity"
                   type="number"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <Label htmlFor="minQuantity">Quantidade Mínima</Label>
-                <Input
-                  id="minQuantity"
-                  type="number"
-                  value={formData.minQuantity}
-                  onChange={(e) => setFormData({ ...formData, minQuantity: e.target.value })}
-                  placeholder="0"
+                  value={String(formData.quantity)}
+                  onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
+                  placeholder="Quantidade"
                 />
               </div>
               <div>
@@ -305,19 +268,9 @@ export const Inventory = () => {
                 <Input
                   id="unitPrice"
                   type="number"
-                  step="0.01"
-                  value={formData.unitPrice}
-                  onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
-                  placeholder="0.00"
-                />
-              </div>
-              <div>
-                <Label htmlFor="supplier">Fornecedor</Label>
-                <Input
-                  id="supplier"
-                  value={formData.supplier}
-                  onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
-                  placeholder="Nome do fornecedor"
+                  value={String(formData.unitPrice)}
+                  onChange={(e) => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
+                  placeholder="Preço Unitário"
                 />
               </div>
               <div>
@@ -329,16 +282,7 @@ export const Inventory = () => {
                   placeholder="Localização do item"
                 />
               </div>
-              <div className="col-span-2">
-                <Label htmlFor="description">Descrição</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Descrição do item"
-                />
-              </div>
-              <div className="col-span-2 flex justify-end space-x-2">
+              <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
                 </Button>
@@ -351,42 +295,21 @@ export const Inventory = () => {
         </Dialog>
       </div>
 
-      {/* Low Stock Alert */}
-      {lowStockItems.length > 0 && (
-        <Card className="border-orange-200 bg-orange-50">
-          <CardHeader>
-            <CardTitle className="text-orange-800">Itens com Estoque Baixo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-orange-700 mb-2">
-              {lowStockItems.length} {lowStockItems.length === 1 ? 'item está' : 'itens estão'} com estoque baixo:
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {lowStockItems.map((item) => (
-                <Badge key={item.id} variant="destructive">
-                  {item.name} ({item.quantity} restante{item.quantity !== 1 ? 's' : ''})
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Inventory Table */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Package className="w-5 h-5" />
-            <span>Lista de Itens</span>
+            <PackagePlus className="w-5 h-5" />
+            <span>Lista de Estoque</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {items.length === 0 ? (
+          {inventory.length === 0 ? (
             <div className="text-center py-8">
-              <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium">Nenhum item encontrado</h3>
+              <PackagePlus className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium">Nenhum item no estoque</h3>
               <p className="text-muted-foreground mb-4">
-                Comece adicionando o primeiro item ao estoque.
+                Comece adicionando o primeiro item ao estoque da organização.
               </p>
               <Button onClick={handleAddNew}>
                 <Plus className="w-4 h-4 mr-2" />
@@ -400,29 +323,19 @@ export const Inventory = () => {
                   <TableHead>Nome</TableHead>
                   <TableHead>Categoria</TableHead>
                   <TableHead>Quantidade</TableHead>
-                  <TableHead>Mín.</TableHead>
-                  <TableHead>Preço Unit.</TableHead>
-                  <TableHead>Fornecedor</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Preço Unitário</TableHead>
+                  <TableHead>Localização</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((item) => (
+                {inventory.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{item.category}</Badge>
-                    </TableCell>
+                    <TableCell>{item.category}</TableCell>
                     <TableCell>{item.quantity}</TableCell>
-                    <TableCell>{item.minQuantity}</TableCell>
                     <TableCell>R$ {item.unitPrice.toFixed(2)}</TableCell>
-                    <TableCell>{item.supplier || '-'}</TableCell>
-                    <TableCell>
-                      <Badge variant={item.quantity <= item.minQuantity ? 'destructive' : 'default'}>
-                        {item.quantity <= item.minQuantity ? 'Estoque Baixo' : 'OK'}
-                      </Badge>
-                    </TableCell>
+                    <TableCell>{item.location || <span className="text-muted-foreground">Não especificado</span>}</TableCell>
                     <TableCell>
                       <div className="flex space-x-1">
                         <Button
@@ -452,34 +365,28 @@ export const Inventory = () => {
       </Card>
 
       {/* Summary Stats */}
-      {items.length > 0 && (
+      {inventory.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Resumo do Estoque</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="text-center p-4 rounded-lg bg-muted/50">
-                <p className="text-2xl font-bold text-primary">{items.length}</p>
+                <p className="text-2xl font-bold text-primary">{inventory.length}</p>
                 <p className="text-sm text-muted-foreground">Total de Itens</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-muted/50">
                 <p className="text-2xl font-bold text-green-600">
-                  {items.reduce((acc, item) => acc + item.quantity, 0)}
+                  {inventory.reduce((acc, item) => acc + item.quantity, 0)}
                 </p>
                 <p className="text-sm text-muted-foreground">Quantidade Total</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-muted/50">
-                <p className="text-2xl font-bold text-orange-600">
-                  {lowStockItems.length}
-                </p>
-                <p className="text-sm text-muted-foreground">Estoque Baixo</p>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-muted/50">
                 <p className="text-2xl font-bold text-blue-600">
-                  R$ {items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0).toFixed(2)}
+                  R$ {inventory.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0).toFixed(2)}
                 </p>
-                <p className="text-sm text-muted-foreground">Valor Total</p>
+                <p className="text-sm text-muted-foreground">Valor Total do Estoque</p>
               </div>
             </div>
           </CardContent>

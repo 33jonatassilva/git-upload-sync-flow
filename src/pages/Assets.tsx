@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,8 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -16,10 +13,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Asset, Person } from '@/types';
+import { Asset } from '@/types';
 import { assetsService } from '@/services/assetsService';
 import { peopleService } from '@/services/peopleService';
-import { Laptop, Plus, Edit, Trash2, Building2 } from 'lucide-react';
+import { Person } from '@/types';
+import { Building2, Plus, Edit, Trash2, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/contexts/AppContext';
 
@@ -33,13 +31,9 @@ export const Assets = () => {
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    type: 'laptop' as Asset['type'],
     serialNumber: '',
-    value: '',
-    purchaseDate: '',
+    type: 'notebook' as Asset['type'],
     status: 'available' as Asset['status'],
-    condition: 'new' as Asset['condition'],
-    notes: '',
     assignedTo: '',
   });
 
@@ -82,7 +76,7 @@ export const Assets = () => {
       return;
     }
 
-    if (!formData.name.trim() || !formData.serialNumber.trim() || !formData.value.trim() || !formData.purchaseDate) {
+    if (!formData.name.trim() || !formData.serialNumber.trim()) {
       toast({
         title: 'Erro!',
         description: 'Preencha todos os campos obrigatórios.',
@@ -95,13 +89,9 @@ export const Assets = () => {
       if (editingAsset) {
         assetsService.update(editingAsset.id, {
           name: formData.name,
-          type: formData.type,
           serialNumber: formData.serialNumber,
-          value: parseFloat(formData.value),
-          purchaseDate: formData.purchaseDate,
+          type: formData.type,
           status: formData.status,
-          condition: formData.condition,
-          notes: formData.notes,
           assignedTo: formData.assignedTo || undefined,
         });
         toast({
@@ -111,15 +101,11 @@ export const Assets = () => {
       } else {
         assetsService.create({
           name: formData.name,
-          type: formData.type,
           serialNumber: formData.serialNumber,
-          value: parseFloat(formData.value),
-          purchaseDate: formData.purchaseDate,
+          type: formData.type,
           status: formData.status,
-          condition: formData.condition,
-          notes: formData.notes,
-          assignedTo: formData.assignedTo || undefined,
           organizationId: currentOrganization.id,
+          assignedTo: formData.assignedTo || undefined,
         });
         toast({
           title: 'Ativo criado!',
@@ -127,16 +113,12 @@ export const Assets = () => {
         });
       }
 
-      setFormData({
-        name: '',
-        type: 'laptop',
-        serialNumber: '',
-        value: '',
-        purchaseDate: '',
+      setFormData({ 
+        name: '', 
+        serialNumber: '', 
+        type: 'notebook',
         status: 'available',
-        condition: 'new',
-        notes: '',
-        assignedTo: '',
+        assignedTo: ''
       });
       setEditingAsset(null);
       setDialogOpen(false);
@@ -154,13 +136,9 @@ export const Assets = () => {
     setEditingAsset(asset);
     setFormData({
       name: asset.name,
-      type: asset.type,
       serialNumber: asset.serialNumber,
-      value: asset.value.toString(),
-      purchaseDate: asset.purchaseDate,
+      type: asset.type,
       status: asset.status,
-      condition: asset.condition,
-      notes: asset.notes || '',
       assignedTo: asset.assignedTo || '',
     });
     setDialogOpen(true);
@@ -195,17 +173,7 @@ export const Assets = () => {
       return;
     }
     setEditingAsset(null);
-    setFormData({
-      name: '',
-      type: 'laptop',
-      serialNumber: '',
-      value: '',
-      purchaseDate: '',
-      status: 'available',
-      condition: 'new',
-      notes: '',
-      assignedTo: '',
-    });
+    setFormData({ name: '', serialNumber: '', type: 'notebook', status: 'available', assignedTo: '' });
     setDialogOpen(true);
   };
 
@@ -250,13 +218,13 @@ export const Assets = () => {
               Novo Ativo
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>
                 {editingAsset ? 'Editar Ativo' : 'Novo Ativo'}
               </DialogTitle>
             </DialogHeader>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div>
                 <Label htmlFor="name">Nome *</Label>
                 <Input
@@ -265,23 +233,6 @@ export const Assets = () => {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Nome do ativo"
                 />
-              </div>
-              <div>
-                <Label htmlFor="type">Tipo *</Label>
-                <Select value={formData.type} onValueChange={(value: Asset['type']) => setFormData({ ...formData, type: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="laptop">Laptop</SelectItem>
-                    <SelectItem value="desktop">Desktop</SelectItem>
-                    <SelectItem value="monitor">Monitor</SelectItem>
-                    <SelectItem value="phone">Telefone</SelectItem>
-                    <SelectItem value="tablet">Tablet</SelectItem>
-                    <SelectItem value="printer">Impressora</SelectItem>
-                    <SelectItem value="other">Outro</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
               <div>
                 <Label htmlFor="serialNumber">Número de Série *</Label>
@@ -293,61 +244,41 @@ export const Assets = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="value">Valor *</Label>
-                <Input
-                  id="value"
-                  type="number"
-                  step="0.01"
-                  value={formData.value}
-                  onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-                  placeholder="0.00"
-                />
-              </div>
-              <div>
-                <Label htmlFor="purchaseDate">Data de Compra *</Label>
-                <Input
-                  id="purchaseDate"
-                  type="date"
-                  value={formData.purchaseDate}
-                  onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                />
+                <Label htmlFor="type">Tipo *</Label>
+                <Select value={formData.type} onValueChange={(value: Asset['type']) => setFormData({ ...formData, type: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="notebook">Notebook</SelectItem>
+                    <SelectItem value="monitor">Monitor</SelectItem>
+                    <SelectItem value="adapter">Adaptador</SelectItem>
+                    <SelectItem value="other">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="status">Status *</Label>
                 <Select value={formData.status} onValueChange={(value: Asset['status']) => setFormData({ ...formData, status: value })}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Selecione o status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="available">Disponível</SelectItem>
-                    <SelectItem value="allocated">Alocado</SelectItem>
-                    <SelectItem value="maintenance">Manutenção</SelectItem>
+                    <SelectItem value="assigned">Atribuído</SelectItem>
+                    <SelectItem value="maintenance">Em Manutenção</SelectItem>
                     <SelectItem value="retired">Aposentado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="condition">Condição *</Label>
-                <Select value={formData.condition} onValueChange={(value: Asset['condition']) => setFormData({ ...formData, condition: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">Novo</SelectItem>
-                    <SelectItem value="good">Bom</SelectItem>
-                    <SelectItem value="fair">Regular</SelectItem>
-                    <SelectItem value="poor">Ruim</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="assignedTo">Atribuído a</Label>
+                <Label htmlFor="assignedTo">Atribuído Para</Label>
                 <Select value={formData.assignedTo} onValueChange={(value) => setFormData({ ...formData, assignedTo: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione uma pessoa (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Não atribuído</SelectItem>
+                    <SelectItem value="unassigned">Não Atribuído</SelectItem>
                     {people.map((person) => (
                       <SelectItem key={person.id} value={person.id}>
                         {person.name}
@@ -356,16 +287,7 @@ export const Assets = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="col-span-2">
-                <Label htmlFor="notes">Observações</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Observações adicionais"
-                />
-              </div>
-              <div className="col-span-2 flex justify-end space-x-2">
+              <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
                 </Button>
@@ -382,14 +304,14 @@ export const Assets = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Laptop className="w-5 h-5" />
+            <Package className="w-5 h-5" />
             <span>Lista de Ativos</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           {assets.length === 0 ? (
             <div className="text-center py-8">
-              <Laptop className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium">Nenhum ativo encontrado</h3>
               <p className="text-muted-foreground mb-4">
                 Comece adicionando o primeiro ativo da organização.
@@ -404,11 +326,10 @@ export const Assets = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
+                  <TableHead>Número de Série</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead>Série</TableHead>
-                  <TableHead>Valor</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Atribuído a</TableHead>
+                  <TableHead>Atribuído Para</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -416,22 +337,20 @@ export const Assets = () => {
                 {assets.map((asset) => (
                   <TableRow key={asset.id}>
                     <TableCell className="font-medium">{asset.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{asset.type}</Badge>
-                    </TableCell>
                     <TableCell>{asset.serialNumber}</TableCell>
-                    <TableCell>R$ {asset.value.toFixed(2)}</TableCell>
+                    <TableCell>{asset.type}</TableCell>
                     <TableCell>
-                      <Badge variant={
-                        asset.status === 'available' ? 'default' :
-                        asset.status === 'allocated' ? 'secondary' :
-                        asset.status === 'maintenance' ? 'destructive' : 'outline'
-                      }>
-                        {asset.status}
-                      </Badge>
+                      {asset.status === 'available' && <div className="text-green-500">Disponível</div>}
+                      {asset.status === 'assigned' && <div className="text-blue-500">Atribuído</div>}
+                      {asset.status === 'maintenance' && <div className="text-yellow-500">Em Manutenção</div>}
+                      {asset.status === 'retired' && <div className="text-gray-500">Aposentado</div>}
                     </TableCell>
                     <TableCell>
-                      {asset.assignedToName || <span className="text-muted-foreground">Não atribuído</span>}
+                      {asset.assignedTo === 'unassigned' ? (
+                        <span className="text-muted-foreground">Não Atribuído</span>
+                      ) : (
+                        people.find(p => p.id === asset.assignedTo)?.name || 'N/A'
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-1">
@@ -460,6 +379,41 @@ export const Assets = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Summary Stats */}
+      {assets.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Resumo dos Ativos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 rounded-lg bg-muted/50">
+                <p className="text-2xl font-bold text-primary">{assets.length}</p>
+                <p className="text-sm text-muted-foreground">Total de Ativos</p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-muted/50">
+                <p className="text-2xl font-bold text-green-600">
+                  {assets.filter(a => a.status === 'available').length}
+                </p>
+                <p className="text-sm text-muted-foreground">Disponíveis</p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-muted/50">
+                <p className="text-2xl font-bold text-blue-600">
+                  {assets.filter(a => a.status === 'assigned').length}
+                </p>
+                <p className="text-sm text-muted-foreground">Atribuídos</p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-muted/50">
+                <p className="text-2xl font-bold text-yellow-600">
+                  {assets.filter(a => a.status === 'maintenance').length}
+                </p>
+                <p className="text-sm text-muted-foreground">Em Manutenção</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

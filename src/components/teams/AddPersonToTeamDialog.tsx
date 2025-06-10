@@ -57,7 +57,11 @@ export const AddPersonToTeamDialog = ({
         position: person.position,
         status: person.status,
         organizationId: person.organization_id,
-        teamId: person.team_id
+        teamId: person.team_id,
+        teamName: undefined,
+        entryDate: person.created_at || new Date().toISOString(),
+        licenses: [],
+        assets: []
       }));
     
     setAvailablePeople(availablePersons);

@@ -51,7 +51,10 @@ export const peopleService = {
           status: person.status,
           organizationId: person.organization_id,
           teamId: person.team_id,
-          teamName: team?.name
+          teamName: team?.name,
+          entryDate: person.created_at || new Date().toISOString(),
+          licenses: [],
+          assets: []
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -74,7 +77,10 @@ export const peopleService = {
       status: person.status,
       organizationId: person.organization_id,
       teamId: person.team_id,
-      teamName: team?.name
+      teamName: team?.name,
+      entryDate: person.created_at || new Date().toISOString(),
+      licenses: [],
+      assets: []
     };
   },
 
@@ -110,7 +116,10 @@ export const peopleService = {
       status: 'active',
       organizationId: data.organizationId,
       teamId: data.teamId,
-      teamName: team?.name
+      teamName: team?.name,
+      entryDate: now,
+      licenses: [],
+      assets: []
     };
   },
 
