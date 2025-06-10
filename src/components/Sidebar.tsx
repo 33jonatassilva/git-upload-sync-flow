@@ -10,7 +10,10 @@ import {
   Building2,
   ChevronLeft,
   ChevronRight,
-  Building
+  Building,
+  Settings,
+  Download,
+  Upload
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,10 +29,67 @@ const navigation = [
   { name: 'Licenças', href: '/licenses', icon: Shield },
   { name: 'Ativos', href: '/assets', icon: Laptop },
   { name: 'Estoque', href: '/inventory', icon: Package },
+  { name: 'Configurações', href: '/settings', icon: Settings },
 ];
 
 export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
   const location = useLocation();
+
+  const handleExport = () => {
+    try {
+      const data = localStorage.getItem('app_database');
+      const exportData = data ? JSON.parse(data) : {};
+      const filename = `sistema-gestao-backup-${new Date().toISOString().split('T')[0]}.json`;
+      
+      const blob = new Blob([JSON.stringify({
+        ...exportData,
+        exportDate: new Date().toISOString(),
+        version: '1.0.0'
+      }, null, 2)], {
+        type: 'application/json'
+      });
+      
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erro ao exportar:', error);
+    }
+  };
+
+  const handleImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const importData = JSON.parse(text);
+        
+        // Fazer backup dos dados atuais
+        const currentData = localStorage.getItem('app_database');
+        localStorage.setItem('app_database_backup', currentData || '{}');
+        
+        // Importar novos dados
+        localStorage.setItem('app_database', JSON.stringify(importData));
+        
+        // Recarregar a página
+        window.location.reload();
+      } catch (error) {
+        console.error('Erro ao importar:', error);
+        alert('Erro ao importar dados. Verifique se o arquivo é válido.');
+      }
+    };
+    input.click();
+  };
 
   return (
     <div className={cn(
@@ -88,6 +148,31 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
           );
         })}
       </nav>
+
+      {/* Import/Export Actions */}
+      <div className="p-2 border-t border-sidebar-border space-y-1">
+        <button
+          onClick={handleExport}
+          className="w-full flex items-center px-3 py-2 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
+        >
+          <Download className={cn(
+            "flex-shrink-0 text-green-500",
+            isOpen ? "w-4 h-4 mr-3" : "w-4 h-4"
+          )} />
+          {isOpen && <span>Exportar Dados</span>}
+        </button>
+        
+        <button
+          onClick={handleImport}
+          className="w-full flex items-center px-3 py-2 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
+        >
+          <Upload className={cn(
+            "flex-shrink-0 text-blue-500",
+            isOpen ? "w-4 h-4 mr-3" : "w-4 h-4"
+          )} />
+          {isOpen && <span>Importar Dados</span>}
+        </button>
+      </div>
 
       {/* Footer */}
       {isOpen && (
