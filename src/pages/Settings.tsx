@@ -16,10 +16,12 @@ import {
   Trash2,
   FileJson
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 
 export const Settings = () => {
+  const { toast } = useToast();
   const [isImporting, setIsImporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [importStatus, setImportStatus] = useState<{
     type: 'success' | 'error' | null;
     message: string;
@@ -27,16 +29,26 @@ export const Settings = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleExport = () => {
+  const handleExport = async () => {
+    setIsExporting(true);
     try {
       const exportData = configService.exportDatabase();
       const filename = `sistema-gestao-backup-${new Date().toISOString().split('T')[0]}.json`;
       
       configService.downloadJsonFile(exportData, filename);
-      toast.success('Dados exportados com sucesso!');
+      toast({
+        title: 'Exportação realizada!',
+        description: 'Os dados foram exportados com sucesso.',
+      });
     } catch (error) {
       console.error('Erro ao exportar:', error);
-      toast.error('Erro ao exportar dados');
+      toast({
+        title: 'Erro!',
+        description: 'Erro ao exportar dados.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -64,9 +76,12 @@ export const Settings = () => {
       if (success) {
         setImportStatus({
           type: 'success',
-          message: `Dados importados com sucesso! Importados em ${new Date(importData.exportDate).toLocaleString('pt-BR')}`
+          message: `Dados importados com sucesso! Backup de ${new Date(importData.exportDate).toLocaleString('pt-BR')}`
         });
-        toast.success('Dados importados com sucesso!');
+        toast({
+          title: 'Importação realizada!',
+          description: 'Os dados foram importados com sucesso.',
+        });
         
         // Recarregar a página após 2 segundos para atualizar todos os dados
         setTimeout(() => {
@@ -81,7 +96,11 @@ export const Settings = () => {
         type: 'error',
         message: error instanceof Error ? error.message : 'Erro desconhecido ao importar dados'
       });
-      toast.error('Erro ao importar dados');
+      toast({
+        title: 'Erro!',
+        description: 'Erro ao importar dados.',
+        variant: 'destructive',
+      });
     } finally {
       setIsImporting(false);
       // Limpar o input para permitir selecionar o mesmo arquivo novamente
@@ -95,16 +114,27 @@ export const Settings = () => {
     try {
       const success = configService.restoreBackup();
       if (success) {
-        toast.success('Backup restaurado com sucesso!');
+        toast({
+          title: 'Backup restaurado!',
+          description: 'O backup foi restaurado com sucesso.',
+        });
         setTimeout(() => {
           window.location.reload();
         }, 1000);
       } else {
-        toast.error('Nenhum backup encontrado');
+        toast({
+          title: 'Erro!',
+          description: 'Nenhum backup encontrado.',
+          variant: 'destructive',
+        });
       }
     } catch (error) {
       console.error('Erro ao restaurar backup:', error);
-      toast.error('Erro ao restaurar backup');
+      toast({
+        title: 'Erro!',
+        description: 'Erro ao restaurar backup.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -112,13 +142,20 @@ export const Settings = () => {
     if (window.confirm('Tem certeza que deseja limpar todos os dados? Esta ação não pode ser desfeita. Um backup será criado automaticamente.')) {
       try {
         configService.clearAllData();
-        toast.success('Dados limpos com sucesso!');
+        toast({
+          title: 'Dados limpos!',
+          description: 'Todos os dados foram limpos com sucesso.',
+        });
         setTimeout(() => {
           window.location.reload();
         }, 1000);
       } catch (error) {
         console.error('Erro ao limpar dados:', error);
-        toast.error('Erro ao limpar dados');
+        toast({
+          title: 'Erro!',
+          description: 'Erro ao limpar dados.',
+          variant: 'destructive',
+        });
       }
     }
   };
@@ -128,8 +165,8 @@ export const Settings = () => {
       {/* Page Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Configurações</h1>
-          <p className="text-muted-foreground">Gerencie as configurações do sistema e dados</p>
+          <h1 className="text-3xl font-bold">Configurações</h1>
+          <p className="text-readable-muted">Gerencie as configurações do sistema e dados</p>
         </div>
       </div>
 
@@ -144,21 +181,29 @@ export const Settings = () => {
         <CardContent className="space-y-6">
           {/* Export Section */}
           <div className="space-y-3">
-            <Label className="text-base font-medium">Exportar Dados</Label>
-            <p className="text-sm text-muted-foreground">
+            <Label className="text-base font-medium text-readable">Exportar Dados</Label>
+            <p className="text-sm text-readable-muted">
               Faça o download de todos os dados do sistema em formato JSON para backup.
             </p>
-            <Button onClick={handleExport} className="flex items-center space-x-2">
-              <Download className="w-4 h-4" />
-              <span>Exportar Dados</span>
+            <Button 
+              onClick={handleExport} 
+              disabled={isExporting}
+              className="flex items-center space-x-2"
+            >
+              {isExporting ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              <span>{isExporting ? 'Exportando...' : 'Exportar Dados'}</span>
             </Button>
           </div>
 
           <div className="border-t pt-6">
             {/* Import Section */}
             <div className="space-y-3">
-              <Label className="text-base font-medium">Importar Dados</Label>
-              <p className="text-sm text-muted-foreground">
+              <Label className="text-base font-medium text-readable">Importar Dados</Label>
+              <p className="text-sm text-readable-muted">
                 Importe dados de um arquivo JSON de backup. Todos os dados atuais serão substituídos.
               </p>
               
@@ -207,8 +252,8 @@ export const Settings = () => {
           <div className="border-t pt-6">
             {/* Backup & Recovery */}
             <div className="space-y-3">
-              <Label className="text-base font-medium">Backup e Recuperação</Label>
-              <p className="text-sm text-muted-foreground">
+              <Label className="text-base font-medium text-readable">Backup e Recuperação</Label>
+              <p className="text-sm text-readable-muted">
                 Restaure o último backup automático ou limpe todos os dados.
               </p>
               
@@ -247,20 +292,20 @@ export const Settings = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label className="text-sm font-medium text-muted-foreground">Versão</Label>
-              <p className="text-base">1.0.0</p>
+              <Label className="text-sm font-medium text-readable-muted">Versão</Label>
+              <p className="text-base text-readable">1.0.0</p>
             </div>
             <div>
-              <Label className="text-sm font-medium text-muted-foreground">Armazenamento</Label>
-              <p className="text-base">LocalStorage</p>
+              <Label className="text-sm font-medium text-readable-muted">Armazenamento</Label>
+              <p className="text-base text-readable">LocalStorage</p>
             </div>
             <div>
-              <Label className="text-sm font-medium text-muted-foreground">Última Atualização</Label>
-              <p className="text-base">{new Date().toLocaleDateString('pt-BR')}</p>
+              <Label className="text-sm font-medium text-readable-muted">Última Atualização</Label>
+              <p className="text-base text-readable">{new Date().toLocaleDateString('pt-BR')}</p>
             </div>
             <div>
-              <Label className="text-sm font-medium text-muted-foreground">Status</Label>
-              <p className="text-base text-green-600">Operacional</p>
+              <Label className="text-sm font-medium text-readable-muted">Status</Label>
+              <p className="text-base text-green-400">Operacional</p>
             </div>
           </div>
         </CardContent>
@@ -273,24 +318,24 @@ export const Settings = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h4 className="font-medium mb-2">Exportar Dados</h4>
-            <p className="text-sm text-muted-foreground">
+            <h4 className="font-medium mb-2 text-readable">Exportar Dados</h4>
+            <p className="text-sm text-readable-muted">
               Use a função de exportar para fazer backup de todos os dados do sistema. 
               O arquivo gerado pode ser usado para restaurar os dados em outro momento.
             </p>
           </div>
           
           <div>
-            <h4 className="font-medium mb-2">Importar Dados</h4>
-            <p className="text-sm text-muted-foreground">
+            <h4 className="font-medium mb-2 text-readable">Importar Dados</h4>
+            <p className="text-sm text-readable-muted">
               Selecione um arquivo JSON de backup para restaurar os dados. 
               Certifique-se de que o arquivo foi gerado pela função de exportar deste sistema.
             </p>
           </div>
           
           <div>
-            <h4 className="font-medium mb-2">Backup Automático</h4>
-            <p className="text-sm text-muted-foreground">
+            <h4 className="font-medium mb-2 text-readable">Backup Automático</h4>
+            <p className="text-sm text-readable-muted">
               O sistema cria automaticamente um backup antes de importar novos dados ou limpar os dados existentes.
             </p>
           </div>
