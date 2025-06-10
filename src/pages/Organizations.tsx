@@ -198,7 +198,7 @@ export const Organizations = () => {
                 </div>
                 
                 {currentOrganization?.id === org.id ? (
-                  <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
+                  <span className="text-xs px-2 py-1 bg-blue-200 text-blue-800 rounded-full">
                     Ativa
                   </span>
                 ) : (
