@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -13,7 +14,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { inventoryService, InventoryItem as ServiceInventoryItem } from '@/services/inventoryService';
-import { Package, Plus, Edit, Trash2, Building2 } from 'lucide-react';
+import { InventoryItem } from '@/types';
+import { Package, Plus, Edit, Trash2, Building2, PackagePlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/contexts/AppContext';
 
@@ -226,7 +228,7 @@ export const Inventory = () => {
               </div>
               <div>
                 <Label htmlFor="category">Categoria *</Label>
-                <Select value={formData.category} onValueChange={(value: InventoryItem['category']) => setFormData({ ...formData, category: value })}>
+                <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a categoria" />
                   </SelectTrigger>
@@ -243,8 +245,8 @@ export const Inventory = () => {
                 <Input
                   id="quantity"
                   type="number"
-                  value={String(formData.quantity)}
-                  onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
+                  value={formData.quantity}
+                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                   placeholder="Quantidade"
                 />
               </div>
@@ -253,8 +255,8 @@ export const Inventory = () => {
                 <Input
                   id="unitPrice"
                   type="number"
-                  value={String(formData.unitPrice)}
-                  onChange={(e) => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
+                  value={formData.unitPrice}
+                  onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
                   placeholder="Preço Unitário"
                 />
               </div>
