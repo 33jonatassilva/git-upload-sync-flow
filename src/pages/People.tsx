@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,10 +14,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Person, Team } from '@/types';
+import { Person, Team, License, Asset } from '@/types';
 import { peopleService } from '@/services/peopleService';
 import { teamsService } from '@/services/teamsService';
-import { Users, Plus, Edit, Trash2, Mail, Building2 } from 'lucide-react';
+import { licensesService } from '@/services/licensesService';
+import { Users, Plus, Edit, Trash2, Mail, Building2, Shield, Laptop, DollarSign } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/contexts/AppContext';
 
@@ -27,6 +27,7 @@ export const People = () => {
   const { currentOrganization } = useApp();
   const [people, setPeople] = useState<Person[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [licenses, setLicenses] = useState<License[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
@@ -41,6 +42,7 @@ export const People = () => {
     if (!currentOrganization) {
       setPeople([]);
       setTeams([]);
+      setLicenses([]);
       setLoading(false);
       return;
     }
@@ -49,8 +51,10 @@ export const People = () => {
     try {
       const peopleData = peopleService.getAll(currentOrganization.id);
       const teamsData = teamsService.getAll(currentOrganization.id);
+      const licensesData = licensesService.getAll(currentOrganization.id);
       setPeople(peopleData);
       setTeams(teamsData);
+      setLicenses(licensesData);
     } catch (error) {
       toast({
         title: 'Erro!',
@@ -166,6 +170,28 @@ export const People = () => {
     setEditingPerson(null);
     setFormData({ name: '', email: '', position: '', teamId: '' });
     setDialogOpen(true);
+  };
+
+  // Calculate person costs and assignments
+  const getPersonLicenses = (personId: string) => {
+    return licenses.filter(license => license.assignedTo.includes(personId));
+  };
+
+  const getPersonLicenseCost = (personId: string) => {
+    const personLicenses = getPersonLicenses(personId);
+    return personLicenses.reduce((total, license) => {
+      const costPerUser = (license.cost || 0) / (license.usedQuantity || 1);
+      return total + costPerUser;
+    }, 0);
+  };
+
+  const getPersonAssetsCost = (personId: string) => {
+    // TODO: Implement when assets service is available
+    return 0;
+  };
+
+  const getTotalPersonCost = (personId: string) => {
+    return getPersonLicenseCost(personId) + getPersonAssetsCost(personId);
   };
 
   if (!currentOrganization) {
@@ -302,55 +328,91 @@ export const People = () => {
                   <TableHead>Email</TableHead>
                   <TableHead>Cargo</TableHead>
                   <TableHead>Time</TableHead>
+                  <TableHead>Licenças</TableHead>
+                  <TableHead>Ativos</TableHead>
+                  <TableHead>Custo Total</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {people.map((person) => (
-                  <TableRow key={person.id}>
-                    <TableCell className="font-medium">{person.name}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Mail className="w-4 h-4 text-muted-foreground" />
-                        <span>{person.email}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{person.position}</TableCell>
-                    <TableCell>
-                      {person.teamName ? (
-                        <Badge variant="outline">{person.teamName}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">Sem time</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={person.status === 'active' ? 'default' : 'secondary'}>
-                        {person.status === 'active' ? 'Ativo' : 'Inativo'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(person)}
-                          className="h-8 w-8"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(person)}
-                          className="h-8 w-8 text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {people.map((person) => {
+                  const personLicenses = getPersonLicenses(person.id);
+                  const licenseCost = getPersonLicenseCost(person.id);
+                  const assetsCost = getPersonAssetsCost(person.id);
+                  const totalCost = getTotalPersonCost(person.id);
+
+                  return (
+                    <TableRow key={person.id}>
+                      <TableCell className="font-medium">{person.name}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Mail className="w-4 h-4 text-muted-foreground" />
+                          <span>{person.email}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{person.position}</TableCell>
+                      <TableCell>
+                        {person.teamName ? (
+                          <Badge variant="outline">{person.teamName}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">Sem time</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Shield className="w-4 h-4 text-blue-600" />
+                          <span>{personLicenses.length}</span>
+                          {personLicenses.length > 0 && (
+                            <span className="text-sm text-muted-foreground">
+                              (R$ {licenseCost.toFixed(2)})
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Laptop className="w-4 h-4 text-green-600" />
+                          <span>0</span>
+                          <span className="text-sm text-muted-foreground">
+                            (R$ {assetsCost.toFixed(2)})
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <DollarSign className="w-4 h-4 text-purple-600" />
+                          <span className="font-medium">R$ {totalCost.toFixed(2)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={person.status === 'active' ? 'default' : 'secondary'}>
+                          {person.status === 'active' ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(person)}
+                            className="h-8 w-8"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(person)}
+                            className="h-8 w-8 text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
@@ -364,7 +426,7 @@ export const People = () => {
             <CardTitle>Resumo das Pessoas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="text-center p-4 rounded-lg bg-muted/50">
                 <p className="text-2xl font-bold text-primary">{people.length}</p>
                 <p className="text-sm text-muted-foreground">Total de Pessoas</p>
@@ -383,9 +445,15 @@ export const People = () => {
               </div>
               <div className="text-center p-4 rounded-lg bg-muted/50">
                 <p className="text-2xl font-bold text-purple-600">
-                  {people.filter(p => !p.teamId).length}
+                  {licenses.reduce((total, license) => total + license.assignedTo.length, 0)}
                 </p>
-                <p className="text-sm text-muted-foreground">Sem Time</p>
+                <p className="text-sm text-muted-foreground">Licenças Atribuídas</p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-muted/50">
+                <p className="text-2xl font-bold text-orange-600">
+                  R$ {people.reduce((total, person) => total + getTotalPersonCost(person.id), 0).toFixed(2)}
+                </p>
+                <p className="text-sm text-muted-foreground">Custo Total</p>
               </div>
             </div>
           </CardContent>

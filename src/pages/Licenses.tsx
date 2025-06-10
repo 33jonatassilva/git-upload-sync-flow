@@ -6,8 +6,8 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { ManageLicenseDialog } from '@/components/licenses/ManageLicenseDialog';
 import { licensesService, CreateLicenseData, UpdateLicenseData } from '@/services/licensesService';
 import { useApp } from '@/contexts/AppContext';
 import { License } from '@/types';
@@ -30,6 +30,7 @@ export const Licenses = () => {
   const [licenses, setLicenses] = useState<License[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLicense, setEditingLicense] = useState<License | null>(null);
+  const [managingLicense, setManagingLicense] = useState<License | null>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -428,7 +429,11 @@ export const Licenses = () => {
                       <Edit className="w-4 h-4 mr-1" />
                       Editar
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setManagingLicense(license)}
+                    >
                       <Users className="w-4 h-4 mr-1" />
                       Gerenciar
                     </Button>
@@ -463,6 +468,16 @@ export const Licenses = () => {
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* Manage License Dialog */}
+      {managingLicense && (
+        <ManageLicenseDialog
+          license={managingLicense}
+          open={!!managingLicense}
+          onOpenChange={(open) => !open && setManagingLicense(null)}
+          onUpdate={loadLicenses}
+        />
       )}
     </div>
   );
