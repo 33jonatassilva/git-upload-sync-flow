@@ -8,8 +8,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { configService, DatabaseExport } from '@/services/configService';
 import { 
   Settings as SettingsIcon, 
-  Download, 
   Upload, 
+  Download, 
   AlertTriangle, 
   Check,
   RefreshCw,
@@ -193,7 +193,7 @@ export const Settings = () => {
               {isExporting ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
               ) : (
-                <Download className="w-4 h-4" />
+                <Upload className="w-4 h-4" />
               )}
               <span>{isExporting ? 'Exportando...' : 'Exportar Dados'}</span>
             </Button>
@@ -217,7 +217,7 @@ export const Settings = () => {
                   {isImporting ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Upload className="w-4 h-4" />
+                    <Download className="w-4 h-4" />
                   )}
                   <span>{isImporting ? 'Importando...' : 'Selecionar Arquivo'}</span>
                 </Button>
