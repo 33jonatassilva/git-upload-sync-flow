@@ -1,21 +1,20 @@
-
-FROM node:18-alpine
+FROM node:18-slim
 
 WORKDIR /app
 
-# Instalar dependências do sistema necessárias para better-sqlite3
-RUN apk add --no-cache python3 make g++
+# Instalar dependências do sistema para better-sqlite3
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
-# Copiar arquivos de dependências
+# Copiar arquivos de dependência
 COPY package*.json ./
 
-# Instalar dependências
+# Instalar dependências de produção
 RUN npm ci --only=production
 
-# Copiar código fonte
+# Copiar código-fonte
 COPY . .
 
-# Criar diretório de banco de dados
+# Criar diretório para banco de dados
 RUN mkdir -p database
 
 # Build da aplicação

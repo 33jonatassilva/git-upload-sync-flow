@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Team } from '@/types';
 import { teamsService } from '@/services/teamsService';
 import { TeamDialog } from '@/components/teams/TeamDialog';
@@ -47,21 +47,19 @@ export const Teams = () => {
   }, [currentOrganization]);
 
   const handleDelete = async (team: Team) => {
-    if (confirm(`Tem certeza que deseja excluir o time "${team.name}"? Esta ação não pode ser desfeita.`)) {
-      try {
-        teamsService.delete(team.id);
-        toast({
-          title: 'Time excluído!',
-          description: 'O time foi excluído com sucesso.',
-        });
-        loadTeams();
-      } catch (error) {
-        toast({
-          title: 'Erro!',
-          description: 'Não foi possível excluir o time.',
-          variant: 'destructive',
-        });
-      }
+    try {
+      teamsService.delete(team.id);
+      toast({
+        title: 'Time excluído!',
+        description: 'O time foi excluído com sucesso.',
+      });
+      loadTeams();
+    } catch (error) {
+      toast({
+        title: 'Erro!',
+        description: 'Não foi possível excluir o time.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -161,14 +159,35 @@ export const Teams = () => {
                   >
                     <Edit className="w-4 h-4" />
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 text-destructive"
-                    onClick={() => handleDelete(team)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir Time</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tem certeza que deseja excluir o time "{team.name}"? 
+                          Esta ação não pode ser desfeita e removerá todas as pessoas do time.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDelete(team)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             </CardHeader>
@@ -231,23 +250,23 @@ export const Teams = () => {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="text-center p-4 rounded-lg bg-muted/50">
-                <p className="text-2xl font-bold text-primary">{teams.length}</p>
+                <p className="text-2xl font-bold" style={{ color: '#3b82f6' }}>{teams.length}</p>
                 <p className="text-sm text-muted-foreground">Total de Times</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-muted/50">
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-2xl font-bold" style={{ color: '#10b981' }}>
                   {teams.reduce((acc, team) => acc + team.peopleCount, 0)}
                 </p>
                 <p className="text-sm text-muted-foreground">Total de Pessoas</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-muted/50">
-                <p className="text-2xl font-bold text-blue-600">
+                <p className="text-2xl font-bold" style={{ color: '#8b5cf6' }}>
                   {teams.length > 0 ? Math.round(teams.reduce((acc, team) => acc + team.peopleCount, 0) / teams.length) : 0}
                 </p>
                 <p className="text-sm text-muted-foreground">Média por Time</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-muted/50">
-                <p className="text-2xl font-bold text-purple-600">100%</p>
+                <p className="text-2xl font-bold" style={{ color: '#f59e0b' }}>100%</p>
                 <p className="text-sm text-muted-foreground">Times Ativos</p>
               </div>
             </div>

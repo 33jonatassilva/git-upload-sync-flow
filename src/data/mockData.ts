@@ -1,4 +1,3 @@
-
 import { Team, Person, License, Asset, DashboardStats } from '@/types';
 
 export const mockTeams: Team[] = [
@@ -86,7 +85,7 @@ export const mockAssets: Asset[] = [
     serialNumber: 'MBP001',
     value: 12000,
     purchaseDate: '2024-01-15',
-    status: 'allocated',
+    status: 'available',
     assignedTo: '1',
     assignedToName: 'João Silva',
     condition: 'good',
@@ -111,7 +110,7 @@ export const mockAssets: Asset[] = [
     serialNumber: 'LG27001',
     value: 1500,
     purchaseDate: '2024-01-20',
-    status: 'allocated',
+    status: 'available',
     assignedTo: '2',
     assignedToName: 'Maria Santos',
     condition: 'good',

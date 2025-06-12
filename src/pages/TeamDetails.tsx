@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -167,7 +166,7 @@ export const TeamDetails = () => {
       </div>
 
       {/* Team Info */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center space-x-2">
@@ -205,17 +204,6 @@ export const TeamDetails = () => {
               <p className="text-3xl font-bold text-primary">{team.peopleCount}</p>
               <p className="text-sm text-muted-foreground">Pessoas no time</p>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle>Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Badge variant="secondary" className="w-full justify-center">
-              Ativo
-            </Badge>
           </CardContent>
         </Card>
       </div>

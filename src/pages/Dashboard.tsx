@@ -16,6 +16,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/contexts/AppContext';
+import { peopleService } from '@/services/peopleService';
+import { licensesService } from '@/services/licensesService';
+import { assetsService } from '@/services/assetsService';
+import { Person, License, Asset } from '@/types';
 
 interface DashboardStats {
   totalPeople: number;
@@ -39,35 +43,29 @@ export const Dashboard = () => {
     availableAssets: 0,
     totalTeams: 0
   });
-  const [expiringLicenses, setExpiringLicenses] = useState<any[]>([]);
-  const [recentAssets, setRecentAssets] = useState<any[]>([]);
-  const [recentPeople, setRecentPeople] = useState<any[]>([]);
+  const [expiringLicenses, setExpiringLicenses] = useState<License[]>([]);
+  const [recentAssets, setRecentAssets] = useState<Asset[]>([]);
+  const [recentPeople, setRecentPeople] = useState<Person[]>([]);
 
   useEffect(() => {
     if (!currentOrganization) return;
 
-    // Load data from localStorage
-    const data = localStorage.getItem('app_database');
-    if (data) {
-      const parsed = JSON.parse(data);
-      const orgId = currentOrganization.id;
+    const loadDashboardData = () => {
+      // Buscar dados reais dos serviços
+      const people = peopleService.getAll(currentOrganization.id);
+      const licenses = licensesService.getAll(currentOrganization.id);
+      const assets = assetsService.getAll(currentOrganization.id);
+      
+      // Buscar times do localStorage
+      const data = localStorage.getItem('app_database');
+      const teams = data ? JSON.parse(data).teams?.filter((t: any) => t.organization_id === currentOrganization.id) || [] : [];
 
-      // Filter data by current organization
-      const people = (parsed.people || []).filter((p: any) => p.organizationId === orgId);
-      const licenses = (parsed.licenses || []).filter((l: any) => l.organizationId === orgId);
-      const assets = (parsed.assets || []).filter((a: any) => a.organizationId === orgId);
-      const teams = (parsed.teams || []).filter((t: any) => t.organizationId === orgId);
-
-      // Calculate stats
-      const activePeople = people.filter((p: any) => p.status === 'active');
-      const expiring = licenses.filter((l: any) => {
-        const expirationDate = new Date(l.expirationDate);
-        const today = new Date();
-        const thirtyDaysFromNow = new Date();
-        thirtyDaysFromNow.setDate(today.getDate() + 30);
-        return expirationDate <= thirtyDaysFromNow || l.status === 'expired' || l.status === 'expiring_soon';
+      // Calcular estatísticas
+      const activePeople = people.filter(p => p.status === 'active');
+      const expiring = licenses.filter(license => {
+        return license.status === 'expired' || license.status === 'expiring_soon';
       });
-      const availableAssets = assets.filter((a: any) => a.status === 'available');
+      const availableAssets = assets.filter(a => a.status === 'available');
 
       setStats({
         totalPeople: people.length,
@@ -79,11 +77,21 @@ export const Dashboard = () => {
         totalTeams: teams.length
       });
 
-      // Set recent data
+      // Definir dados recentes (ordenar por data de criação)
+      const sortedPeople = [...activePeople].sort((a, b) => 
+        new Date(b.entryDate).getTime() - new Date(a.entryDate).getTime()
+      );
+      
+      const sortedAssets = [...assets].sort((a, b) => 
+        new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()
+      );
+
       setExpiringLicenses(expiring.slice(0, 5));
-      setRecentAssets(assets.slice(0, 5));
-      setRecentPeople(activePeople.slice(0, 5));
-    }
+      setRecentAssets(sortedAssets.slice(0, 5));
+      setRecentPeople(sortedPeople.slice(0, 5));
+    };
+
+    loadDashboardData();
   }, [currentOrganization]);
 
   const handleQuickAction = (action: string) => {
@@ -112,7 +120,7 @@ export const Dashboard = () => {
   if (!currentOrganization) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-readable-muted">Selecione uma organização para ver o dashboard</p>
+        <p className="text-muted-foreground">Selecione uma organização para ver o dashboard</p>
       </div>
     );
   }
@@ -184,19 +192,19 @@ export const Dashboard = () => {
                 recentPeople.map((person) => (
                   <div key={person.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                     <div>
-                      <p className="font-medium text-readable">{person.name}</p>
-                      <p className="text-sm text-readable-muted">{person.teamName || 'Sem time'}</p>
+                      <p className="font-medium text-foreground">{person.name}</p>
+                      <p className="text-sm text-muted-foreground">{person.teamName || 'Sem time'}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-readable">{person.position || 'Sem cargo'}</p>
-                      <p className="text-xs text-readable-muted">
+                      <p className="text-sm font-medium text-foreground">{person.position || 'Sem cargo'}</p>
+                      <p className="text-xs text-muted-foreground">
                         {person.entryDate ? new Date(person.entryDate).toLocaleDateString('pt-BR') : 'Data não informada'}
                       </p>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-readable-muted text-center py-4">Nenhuma pessoa encontrada</p>
+                <p className="text-muted-foreground text-center py-4">Nenhuma pessoa encontrada</p>
               )}
             </div>
           </CardContent>
@@ -216,21 +224,21 @@ export const Dashboard = () => {
                 expiringLicenses.map((license) => (
                   <div key={license.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                     <div>
-                      <p className="font-medium text-readable">{license.name}</p>
-                      <p className="text-sm text-readable-muted">{license.vendor}</p>
+                      <p className="font-medium text-foreground">{license.name}</p>
+                      <p className="text-sm text-muted-foreground">{license.vendor || 'Sem fornecedor'}</p>
                     </div>
                     <div className="text-right">
                       <Badge variant={license.status === 'expired' ? 'destructive' : 'secondary'}>
                         {license.status === 'expired' ? 'Vencida' : 'Vencendo'}
                       </Badge>
-                      <p className="text-xs text-readable-muted mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {new Date(license.expirationDate).toLocaleDateString('pt-BR')}
                       </p>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-readable-muted text-center py-4">Nenhuma licença requer atenção</p>
+                <p className="text-muted-foreground text-center py-4">Nenhuma licença requer atenção</p>
               )}
             </div>
           </CardContent>
@@ -250,21 +258,23 @@ export const Dashboard = () => {
                 recentAssets.map((asset) => (
                   <div key={asset.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                     <div>
-                      <p className="font-medium text-readable">{asset.name}</p>
-                      <p className="text-sm text-readable-muted">{asset.serialNumber}</p>
+                      <p className="font-medium text-foreground">{asset.name}</p>
+                      <p className="text-sm text-muted-foreground">{asset.serialNumber}</p>
                     </div>
                     <div className="text-right">
                       <Badge variant={asset.status === 'available' ? 'secondary' : 'default'}>
-                        {asset.status === 'available' ? 'Disponível' : asset.status === 'allocated' ? 'Alocado' : asset.status}
+                        {asset.status === 'available' ? 'Disponível' : 
+                         asset.status === 'maintenance' ? 'Manutenção' : 
+                         asset.status === 'retired' ? 'Aposentado' : asset.status}
                       </Badge>
-                      <p className="text-xs text-readable-muted mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         R$ {asset.value?.toLocaleString('pt-BR') || 'N/A'}
                       </p>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-readable-muted text-center py-4">Nenhum ativo encontrado</p>
+                <p className="text-muted-foreground text-center py-4">Nenhum ativo encontrado</p>
               )}
             </div>
           </CardContent>
@@ -288,7 +298,7 @@ export const Dashboard = () => {
                 <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/20">
                   <Users className="w-6 h-6 text-blue-500" />
                 </div>
-                <span className="text-sm font-medium text-readable">Nova Pessoa</span>
+                <span className="text-sm font-medium text-foreground">Nova Pessoa</span>
               </Button>
               
               <Button
@@ -299,7 +309,7 @@ export const Dashboard = () => {
                 <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/20">
                   <Shield className="w-6 h-6 text-green-500" />
                 </div>
-                <span className="text-sm font-medium text-readable">Nova Licença</span>
+                <span className="text-sm font-medium text-foreground">Nova Licença</span>
               </Button>
               
               <Button
@@ -310,7 +320,7 @@ export const Dashboard = () => {
                 <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/20">
                   <Laptop className="w-6 h-6 text-purple-500" />
                 </div>
-                <span className="text-sm font-medium text-readable">Novo Ativo</span>
+                <span className="text-sm font-medium text-foreground">Novo Ativo</span>
               </Button>
               
               <Button
@@ -321,7 +331,7 @@ export const Dashboard = () => {
                 <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/20">
                   <Building2 className="w-6 h-6 text-orange-500" />
                 </div>
-                <span className="text-sm font-medium text-readable">Novo Time</span>
+                <span className="text-sm font-medium text-foreground">Novo Time</span>
               </Button>
             </div>
           </CardContent>

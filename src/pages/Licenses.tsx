@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -125,11 +126,9 @@ export const Licenses = () => {
   };
 
   const handleDelete = (licenseId: string) => {
-    if (window.confirm('Tem certeza que deseja excluir esta licença?')) {
-      licensesService.delete(licenseId);
-      loadLicenses();
-      toast.success('Licença excluída com sucesso!');
-    }
+    licensesService.delete(licenseId);
+    loadLicenses();
+    toast.success('Licença excluída com sucesso!');
   };
 
   const getStatusIcon = (status: string) => {
@@ -351,6 +350,7 @@ export const Licenses = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {licenses.map((license) => {
           const usagePercentage = (license.usedQuantity / license.totalQuantity) * 100;
+          const costPerUser = license.cost && license.totalQuantity > 0 ? license.cost / license.totalQuantity : 0;
           
           return (
             <Card key={license.id} className="card-hover">
@@ -402,10 +402,10 @@ export const Licenses = () => {
                     <div className="space-y-1">
                       <div className="flex items-center space-x-2 text-sm">
                         <DollarSign className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">Valor</span>
+                        <span className="text-muted-foreground">Valor/Usuário</span>
                       </div>
                       <p className="text-sm font-medium">
-                        R$ {(license.cost || 0).toLocaleString('pt-BR')}
+                        R$ {costPerUser.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     </div>
                   </div>
@@ -437,14 +437,31 @@ export const Licenses = () => {
                       <Users className="w-4 h-4 mr-1" />
                       Gerenciar
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="text-destructive"
-                      onClick={() => handleDelete(license.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tem certeza que deseja excluir a licença "{license.name}"? Esta ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(license.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </CardContent>

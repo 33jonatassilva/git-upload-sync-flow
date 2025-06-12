@@ -1,3 +1,4 @@
+
 export interface Organization {
   id: string;
   name: string;
@@ -30,6 +31,8 @@ export interface Person {
   assets: Asset[];
   responsibilityTermUrl?: string;
   organizationId: string;
+  managerId?: string; // ID do manager/supervisor
+  subordinates?: string[]; // IDs dos subordinados
 }
 
 export interface License {
@@ -43,6 +46,8 @@ export interface License {
   vendor?: string;
   status: 'active' | 'expired' | 'expiring_soon';
   assignedTo: string[]; // person IDs
+  licenseCode?: string; // código serial da licença (geral)
+  individualCodes?: Record<string, string>; // códigos individuais por pessoa (personId -> code)
   organizationId: string;
 }
 
@@ -53,7 +58,7 @@ export interface Asset {
   serialNumber: string;
   value: number;
   purchaseDate: string;
-  status: 'available' | 'allocated' | 'maintenance' | 'retired';
+  status: 'available' | 'maintenance' | 'retired';
   assignedTo?: string; // person ID
   assignedToName?: string;
   condition: 'new' | 'good' | 'fair' | 'poor';

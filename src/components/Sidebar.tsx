@@ -6,7 +6,6 @@ import {
   Users, 
   Shield, 
   Laptop, 
-  Package, 
   Building2,
   ChevronLeft,
   ChevronRight,
@@ -26,7 +25,6 @@ const navigation = [
   { name: 'Pessoas', href: '/people', icon: Users },
   { name: 'Licenças', href: '/licenses', icon: Shield },
   { name: 'Ativos', href: '/assets', icon: Laptop },
-  { name: 'Estoque', href: '/inventory', icon: Package },
   { name: 'Configurações', href: '/settings', icon: Settings },
 ];
 
@@ -43,11 +41,15 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
         <div className="flex items-center justify-between">
           {isOpen && (
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 gradient-bg rounded-lg flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                <img 
+                  src="/lovable-uploads/65175c3d-3a3e-4412-bfb7-6cac7dc0c689.png" 
+                  alt="Infra Tools Logo" 
+                  className="w-8 h-8 object-contain rounded-lg"
+                />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-sidebar-foreground">GestãoPro</h1>
+                <h1 className="text-lg font-bold text-sidebar-foreground">Infra Tools</h1>
                 <p className="text-xs text-muted-foreground">Sistema de Gestão</p>
               </div>
             </div>
@@ -96,7 +98,7 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
         <div className="p-4 border-t border-sidebar-border">
           <div className="text-xs text-muted-foreground">
             <p>Versão 1.0.0</p>
-            <p>© 2024 GestãoPro</p>
+            <p>© 2024 Infra Tools</p>
           </div>
         </div>
       )}

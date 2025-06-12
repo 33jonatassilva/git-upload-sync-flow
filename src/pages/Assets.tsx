@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,
@@ -50,8 +51,8 @@ export const Assets = () => {
 
     setLoading(true);
     try {
-      const assetsData = assetsService.getAll(currentOrganization.id);
-      const peopleData = peopleService.getAll(currentOrganization.id);
+      const assetsData = await assetsService.getAll(currentOrganization.id);
+      const peopleData = await peopleService.getAll(currentOrganization.id);
       setAssets(assetsData);
       setPeople(peopleData);
     } catch (error) {
@@ -160,21 +161,19 @@ export const Assets = () => {
   };
 
   const handleDelete = (asset: Asset) => {
-    if (confirm(`Tem certeza que deseja excluir "${asset.name}"? Esta ação não pode ser desfeita.`)) {
-      try {
-        assetsService.delete(asset.id);
-        toast({
-          title: 'Ativo excluído!',
-          description: 'O ativo foi excluído com sucesso.',
-        });
-        loadData();
-      } catch (error) {
-        toast({
-          title: 'Erro!',
-          description: 'Não foi possível excluir o ativo.',
-          variant: 'destructive',
-        });
-      }
+    try {
+      assetsService.delete(asset.id);
+      toast({
+        title: 'Ativo excluído!',
+        description: 'O ativo foi excluído com sucesso.',
+      });
+      loadData();
+    } catch (error) {
+      toast({
+        title: 'Erro!',
+        description: 'Não foi possível excluir o ativo.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -190,6 +189,45 @@ export const Assets = () => {
     setEditingAsset(null);
     setFormData({ name: '', serialNumber: '', type: '', status: 'available', condition: 'good', value: '', purchaseDate: new Date().toISOString().split('T')[0], assignedTo: '' });
     setDialogOpen(true);
+  };
+
+  const getAssetStatus = (asset: Asset) => {
+    if (asset.assignedTo) {
+      return 'allocated';
+    }
+    return asset.status;
+  };
+
+  const getAssetStatusLabel = (asset: Asset) => {
+    const status = getAssetStatus(asset);
+    switch (status) {
+      case 'allocated':
+        return 'Alocado';
+      case 'available':
+        return 'Disponível';
+      case 'maintenance':
+        return 'Manutenção';
+      case 'retired':
+        return 'Aposentado';
+      default:
+        return 'Disponível';
+    }
+  };
+
+  const getAssetStatusVariant = (asset: Asset) => {
+    const status = getAssetStatus(asset);
+    switch (status) {
+      case 'allocated':
+        return 'secondary';
+      case 'available':
+        return 'default';
+      case 'maintenance':
+        return 'destructive';
+      case 'retired':
+        return 'outline';
+      default:
+        return 'default';
+    }
   };
 
   if (!currentOrganization) {
@@ -280,7 +318,6 @@ export const Assets = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="available">Disponível</SelectItem>
-                    <SelectItem value="allocated">Alocado</SelectItem>
                     <SelectItem value="maintenance">Manutenção</SelectItem>
                     <SelectItem value="retired">Aposentado</SelectItem>
                   </SelectContent>
@@ -293,7 +330,7 @@ export const Assets = () => {
                     <SelectValue placeholder="Selecione a condição" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="excellent">Excelente</SelectItem>
+                    <SelectItem value="new">Nova</SelectItem>
                     <SelectItem value="good">Boa</SelectItem>
                     <SelectItem value="fair">Regular</SelectItem>
                     <SelectItem value="poor">Ruim</SelectItem>
@@ -327,7 +364,6 @@ export const Assets = () => {
                     <SelectValue placeholder="Selecione uma pessoa (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="unassigned">Não atribuído</SelectItem>
                     {people.map((person) => (
                       <SelectItem key={person.id} value={person.id}>
                         {person.name}
@@ -388,16 +424,12 @@ export const Assets = () => {
                   <TableRow key={asset.id}>
                     <TableCell className="font-medium">{asset.name}</TableCell>
                     <TableCell>{asset.serialNumber}</TableCell>
-                    <TableCell>{asset.type}</TableCell>
-                     <TableCell>{asset.value}</TableCell>
+                    <TableCell className="capitalize">{asset.type}</TableCell>
+                    <TableCell>R$ {asset.value.toFixed(2)}</TableCell>
                     <TableCell>{asset.assignedToName || <span className="text-muted-foreground">Não atribuído</span>}</TableCell>
                     <TableCell>
-                      <Badge variant={asset.status === 'available' ? 'default' : 
-                                   asset.status === 'allocated' ? 'secondary' : 
-                                   asset.status === 'maintenance' ? 'destructive' : 'outline'}>
-                        {asset.status === 'available' ? 'Disponível' : 
-                         asset.status === 'allocated' ? 'Alocado' : 
-                         asset.status === 'maintenance' ? 'Manutenção' : 'Aposentado'}
+                      <Badge variant={getAssetStatusVariant(asset)}>
+                        {getAssetStatusLabel(asset)}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -410,14 +442,31 @@ export const Assets = () => {
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(asset)}
-                          className="h-8 w-8 text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja excluir o ativo "{asset.name}"? Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(asset)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -442,19 +491,19 @@ export const Assets = () => {
               </div>
               <div className="text-center p-4 rounded-lg bg-muted/50">
                 <p className="text-2xl font-bold text-green-600">
-                  {assets.filter(a => a.status === 'available').length}
+                  {assets.filter(a => !a.assignedTo && a.status === 'available').length}
                 </p>
                 <p className="text-sm text-muted-foreground">Disponíveis</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-muted/50">
                 <p className="text-2xl font-bold text-blue-600">
-                  {assets.filter(a => a.status === 'allocated').length}
+                  {assets.filter(a => a.assignedTo).length}
                 </p>
                 <p className="text-sm text-muted-foreground">Alocados</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-muted/50">
                 <p className="text-2xl font-bold text-orange-600">
-                  {assets.reduce((acc, asset) => acc + asset.value, 0).toFixed(2)}
+                  R$ {assets.reduce((acc, asset) => acc + asset.value, 0).toFixed(2)}
                 </p>
                 <p className="text-sm text-muted-foreground">Valor Total</p>
               </div>

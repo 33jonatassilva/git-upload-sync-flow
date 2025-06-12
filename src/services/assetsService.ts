@@ -149,7 +149,7 @@ export const assetsService = {
     if (data.condition !== undefined) asset.condition = data.condition;
     if (data.value !== undefined) asset.value = data.value;
     if (data.purchaseDate !== undefined) asset.purchase_date = data.purchaseDate;
-    if (data.assignedTo !== undefined) asset.assigned_to = data.assignedTo;
+    if (data.assignedTo !== undefined) asset.assigned_to = data.assignedTo || null;
     asset.updated_at = now;
     
     assets[assetIndex] = asset;

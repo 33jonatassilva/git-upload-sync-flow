@@ -10,9 +10,9 @@ import { Dashboard } from "./pages/Dashboard";
 import { Teams } from "./pages/Teams";
 import { TeamDetails } from "./pages/TeamDetails";
 import { People } from "./pages/People";
+import { PersonDetails } from "./pages/PersonDetails";
 import { Licenses } from "./pages/Licenses";
 import { Assets } from "./pages/Assets";
-import { Inventory } from "./pages/Inventory";
 import { Organizations } from "./pages/Organizations";
 import { Settings } from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -37,9 +37,9 @@ const App = () => (
               <Route path="teams" element={<Teams />} />
               <Route path="teams/:id" element={<TeamDetails />} />
               <Route path="people" element={<People />} />
+              <Route path="people/:id" element={<PersonDetails />} />
               <Route path="licenses" element={<Licenses />} />
               <Route path="assets" element={<Assets />} />
-              <Route path="inventory" element={<Inventory />} />
               <Route path="settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />

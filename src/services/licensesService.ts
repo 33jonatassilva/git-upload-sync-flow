@@ -65,6 +65,8 @@ export const licensesService = {
         vendor: license.vendor,
         status: calculateLicenseStatus(license.expiration_date),
         assignedTo: license.assigned_to ? JSON.parse(license.assigned_to) : [],
+        licenseCode: license.license_code,
+        individualCodes: license.individual_codes ? JSON.parse(license.individual_codes) : {},
         organizationId: license.organization_id
       }))
       .sort((a, b) => new Date(b.expirationDate).getTime() - new Date(a.expirationDate).getTime());
@@ -87,6 +89,8 @@ export const licensesService = {
       vendor: license.vendor,
       status: calculateLicenseStatus(license.expiration_date),
       assignedTo: license.assigned_to ? JSON.parse(license.assigned_to) : [],
+      licenseCode: license.license_code,
+      individualCodes: license.individual_codes ? JSON.parse(license.individual_codes) : {},
       organizationId: license.organization_id
     };
   },
@@ -107,6 +111,7 @@ export const licensesService = {
       vendor: data.vendor || null,
       organization_id: data.organizationId,
       assigned_to: JSON.stringify([]),
+      individual_codes: JSON.stringify({}),
       created_at: now,
       updated_at: now
     };
@@ -125,6 +130,7 @@ export const licensesService = {
       vendor: data.vendor,
       status: calculateLicenseStatus(data.expirationDate),
       assignedTo: [],
+      individualCodes: {},
       organizationId: data.organizationId
     };
   },
@@ -186,8 +192,49 @@ export const licensesService = {
     const assignedTo = license.assigned_to ? JSON.parse(license.assigned_to) : [];
     const filteredAssigned = assignedTo.filter((id: string) => id !== userId);
     
+    // Remove código individual da pessoa
+    const individualCodes = license.individual_codes ? JSON.parse(license.individual_codes) : {};
+    delete individualCodes[userId];
+    
     license.assigned_to = JSON.stringify(filteredAssigned);
+    license.individual_codes = JSON.stringify(individualCodes);
     license.used_quantity = filteredAssigned.length;
+    license.updated_at = new Date().toISOString();
+    
+    licenses[licenseIndex] = license;
+    saveTableData('licenses', licenses);
+  },
+
+  updateLicenseCode: (licenseId: string, licenseCode: string): void => {
+    const licenses = getTableData('licenses');
+    const licenseIndex = licenses.findIndex(l => l.id === licenseId);
+    
+    if (licenseIndex === -1) return;
+    
+    const license = licenses[licenseIndex];
+    license.license_code = licenseCode;
+    license.updated_at = new Date().toISOString();
+    
+    licenses[licenseIndex] = license;
+    saveTableData('licenses', licenses);
+  },
+
+  updateIndividualCode: (licenseId: string, userId: string, code: string): void => {
+    const licenses = getTableData('licenses');
+    const licenseIndex = licenses.findIndex(l => l.id === licenseId);
+    
+    if (licenseIndex === -1) return;
+    
+    const license = licenses[licenseIndex];
+    const individualCodes = license.individual_codes ? JSON.parse(license.individual_codes) : {};
+    
+    if (code.trim()) {
+      individualCodes[userId] = code.trim();
+    } else {
+      delete individualCodes[userId];
+    }
+    
+    license.individual_codes = JSON.stringify(individualCodes);
     license.updated_at = new Date().toISOString();
     
     licenses[licenseIndex] = license;
