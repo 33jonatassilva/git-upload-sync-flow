@@ -76,6 +76,7 @@ export interface InventoryItem {
   organizationId: string;
   costPerUnit: number;
   supplier: string;
+  status: 'available' | 'in_use' | 'maintenance' | 'out_of_stock';
   createdAt: string;
   updatedAt: string;
 }

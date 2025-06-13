@@ -8,7 +8,7 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "0.0.0.0",
-    port: 5173,
+    port: 8080,
   },
   preview: {
     host: "0.0.0.0",
@@ -34,6 +34,5 @@ export default defineConfig(({ mode }) => ({
   },
   optimizeDeps: {
     include: ['react-router-dom'],
-    exclude: ['path-to-regexp'],
   },
 }));

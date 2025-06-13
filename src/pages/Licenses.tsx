@@ -49,10 +49,15 @@ export const Licenses = () => {
     }
   }, [currentOrganization]);
 
-  const loadLicenses = () => {
+  const loadLicenses = async () => {
     if (!currentOrganization) return;
-    const licenseData = licensesService.getAll(currentOrganization.id);
-    setLicenses(licenseData);
+    try {
+      const licenseData = await licensesService.getAll(currentOrganization.id);
+      setLicenses(licenseData);
+    } catch (error) {
+      console.error('Error loading licenses:', error);
+      toast.error('Erro ao carregar licenças');
+    }
   };
 
   const resetForm = () => {
@@ -66,7 +71,7 @@ export const Licenses = () => {
     });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.expirationDate || !formData.totalQuantity) {
       toast.error('Nome, data de vencimento e quantidade total são obrigatórios');
       return;
@@ -77,39 +82,44 @@ export const Licenses = () => {
       return;
     }
 
-    if (editingLicense) {
-      // Edit license
-      const updateData: UpdateLicenseData = {
-        name: formData.name,
-        description: formData.description,
-        expirationDate: formData.expirationDate,
-        totalQuantity: parseInt(formData.totalQuantity),
-        cost: parseFloat(formData.cost) || undefined,
-        vendor: formData.vendor,
-      };
-      
-      licensesService.update(editingLicense.id, updateData);
-      toast.success('Licença atualizada com sucesso!');
-    } else {
-      // Create new license
-      const createData: CreateLicenseData = {
-        name: formData.name,
-        description: formData.description,
-        expirationDate: formData.expirationDate,
-        totalQuantity: parseInt(formData.totalQuantity),
-        cost: parseFloat(formData.cost) || undefined,
-        vendor: formData.vendor,
-        organizationId: currentOrganization.id,
-      };
-      
-      licensesService.create(createData);
-      toast.success('Licença criada com sucesso!');
-    }
+    try {
+      if (editingLicense) {
+        // Edit license
+        const updateData: UpdateLicenseData = {
+          name: formData.name,
+          description: formData.description,
+          expirationDate: formData.expirationDate,
+          totalQuantity: parseInt(formData.totalQuantity),
+          cost: parseFloat(formData.cost) || undefined,
+          vendor: formData.vendor,
+        };
+        
+        await licensesService.update(editingLicense.id, updateData);
+        toast.success('Licença atualizada com sucesso!');
+      } else {
+        // Create new license
+        const createData: CreateLicenseData = {
+          name: formData.name,
+          description: formData.description,
+          expirationDate: formData.expirationDate,
+          totalQuantity: parseInt(formData.totalQuantity),
+          cost: parseFloat(formData.cost) || undefined,
+          vendor: formData.vendor,
+          organizationId: currentOrganization.id,
+        };
+        
+        await licensesService.create(createData);
+        toast.success('Licença criada com sucesso!');
+      }
 
-    loadLicenses();
-    resetForm();
-    setEditingLicense(null);
-    setIsDialogOpen(false);
+      await loadLicenses();
+      resetForm();
+      setEditingLicense(null);
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error saving license:', error);
+      toast.error('Erro ao salvar licença');
+    }
   };
 
   const handleEdit = (license: License) => {
@@ -125,10 +135,15 @@ export const Licenses = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (licenseId: string) => {
-    licensesService.delete(licenseId);
-    loadLicenses();
-    toast.success('Licença excluída com sucesso!');
+  const handleDelete = async (licenseId: string) => {
+    try {
+      await licensesService.delete(licenseId);
+      await loadLicenses();
+      toast.success('Licença excluída com sucesso!');
+    } catch (error) {
+      console.error('Error deleting license:', error);
+      toast.error('Erro ao excluir licença');
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -367,7 +382,7 @@ export const Licenses = () => {
                   </div>
                   <div className="flex items-center space-x-2">
                     {getStatusIcon(license.status)}
-                    <Badge variant={getStatusVariant(license.status)}>
+                    <Badge variant={getStatusVariant(license.status) as any}>
                       {getStatusText(license.status)}
                     </Badge>
                   </div>

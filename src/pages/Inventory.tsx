@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -67,29 +68,33 @@ export const Inventory = () => {
     item.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'available':
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'in_use':
-        return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
-      case 'maintenance':
-        return <XCircle className="w-4 h-4 text-red-500" />;
-      default:
-        return <Package className="w-4 h-4 text-gray-500" />;
+  const getStatusIcon = (item: InventoryItem) => {
+    if (item.quantity === 0) {
+      return <XCircle className="w-4 h-4 text-red-500" />;
+    } else if (item.quantity <= item.minQuantity) {
+      return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
+    } else {
+      return <CheckCircle className="w-4 h-4 text-green-500" />;
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'available':
-        return 'Disponível';
-      case 'in_use':
-        return 'Em Uso';
-      case 'maintenance':
-        return 'Manutenção';
-      default:
-        return status;
+  const getStatusLabel = (item: InventoryItem) => {
+    if (item.quantity === 0) {
+      return 'Sem Estoque';
+    } else if (item.quantity <= item.minQuantity) {
+      return 'Estoque Baixo';
+    } else {
+      return 'Disponível';
+    }
+  };
+
+  const getStatusVariant = (item: InventoryItem) => {
+    if (item.quantity === 0) {
+      return 'destructive';
+    } else if (item.quantity <= item.minQuantity) {
+      return 'secondary';
+    } else {
+      return 'default';
     }
   };
 
@@ -182,8 +187,10 @@ export const Inventory = () => {
                     <TableCell>{item.location}</TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
-                        {getStatusIcon(item.status)}
-                        <span>{getStatusLabel(item.status)}</span>
+                        {getStatusIcon(item)}
+                        <Badge variant={getStatusVariant(item) as any}>
+                          {getStatusLabel(item)}
+                        </Badge>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -202,7 +209,7 @@ export const Inventory = () => {
             </Table>
           )}
         </CardContent>
-      </Card>
+      </Car
     </div>
   );
 };

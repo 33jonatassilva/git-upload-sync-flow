@@ -15,6 +15,7 @@ import { Licenses } from "./pages/Licenses";
 import { Assets } from "./pages/Assets";
 import { Organizations } from "./pages/Organizations";
 import { Settings } from "./pages/Settings";
+import { Inventory } from "./pages/Inventory";
 import NotFound from "./pages/NotFound";
 import { initDatabase } from "./lib/database";
 
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="people/:id" element={<PersonDetails />} />
               <Route path="licenses" element={<Licenses />} />
               <Route path="assets" element={<Assets />} />
+              <Route path="inventory" element={<Inventory />} />
               <Route path="settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />
