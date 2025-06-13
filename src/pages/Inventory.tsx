@@ -209,7 +209,7 @@ export const Inventory = () => {
             </Table>
           )}
         </CardContent>
-      </Car
+      </Card>
     </div>
   );
 };
