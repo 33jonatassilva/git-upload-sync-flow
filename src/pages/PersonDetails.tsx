@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,7 +51,7 @@ export const PersonDetails = () => {
     setLoading(true);
     try {
       // Carregar dados da pessoa
-      const personData = peopleService.getById(id);
+      const personData = await peopleService.getById(id);
       if (!personData) {
         navigate('/people');
         return;
@@ -60,7 +59,7 @@ export const PersonDetails = () => {
       setPerson(personData);
 
       // Carregar todas as pessoas para encontrar hierarquia
-      const allPeople = peopleService.getAll(currentOrganization.id);
+      const allPeople = await peopleService.getAll(currentOrganization.id);
       
       // Encontrar subordinados (pessoas que têm esta pessoa como manager)
       const subordinatesData = allPeople.filter(p => p.managerId === id);
@@ -73,14 +72,14 @@ export const PersonDetails = () => {
       }
 
       // Carregar licenças
-      const allLicenses = licensesService.getAll(currentOrganization.id);
+      const allLicenses = await licensesService.getAll(currentOrganization.id);
       const personLicenses = allLicenses.filter(license => 
         license.assignedTo.includes(id)
       );
       setLicenses(personLicenses);
 
       // Carregar ativos
-      const allAssets = assetsService.getAll(currentOrganization.id);
+      const allAssets = await assetsService.getAll(currentOrganization.id);
       const personAssets = allAssets.filter(asset => asset.assignedTo === id);
       setAssets(personAssets);
 

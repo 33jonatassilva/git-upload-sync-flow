@@ -44,8 +44,8 @@ export const TeamDetails = () => {
     
     setLoading(true);
     try {
-      const teamData = teamsService.getById(id);
-      const membersData = teamsService.getTeamMembers(id) as Person[];
+      const teamData = await teamsService.getById(id);
+      const membersData = await teamsService.getTeamMembers(id) as Person[];
       
       setTeam(teamData);
       setMembers(membersData);
@@ -69,7 +69,7 @@ export const TeamDetails = () => {
     
     if (confirm('Tem certeza que deseja excluir este time? Esta ação não pode ser desfeita.')) {
       try {
-        teamsService.delete(id);
+        await teamsService.delete(id);
         toast({
           title: 'Time excluído!',
           description: 'O time foi excluído com sucesso.',
@@ -87,7 +87,7 @@ export const TeamDetails = () => {
 
   const handleRemoveMember = async (personId: string) => {
     try {
-      teamsService.removePersonFromTeam(personId);
+      await teamsService.removePersonFromTeam(personId);
       toast({
         title: 'Pessoa removida!',
         description: 'A pessoa foi removida do time com sucesso.',

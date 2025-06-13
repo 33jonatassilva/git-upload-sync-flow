@@ -29,7 +29,7 @@ export const Teams = () => {
 
     setLoading(true);
     try {
-      const teamsData = teamsService.getAll(currentOrganization.id);
+      const teamsData = await teamsService.getAll(currentOrganization.id);
       setTeams(teamsData);
     } catch (error) {
       toast({
@@ -48,7 +48,7 @@ export const Teams = () => {
 
   const handleDelete = async (team: Team) => {
     try {
-      teamsService.delete(team.id);
+      await teamsService.delete(team.id);
       toast({
         title: 'Time excluído!',
         description: 'O time foi excluído com sucesso.',

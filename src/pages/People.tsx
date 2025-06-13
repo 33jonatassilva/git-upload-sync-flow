@@ -54,9 +54,9 @@ export const People = () => {
 
     setLoading(true);
     try {
-      const peopleData = peopleService.getAll(currentOrganization.id);
-      const teamsData = teamsService.getAll(currentOrganization.id);
-      const licensesData = licensesService.getAll(currentOrganization.id);
+      const peopleData = await peopleService.getAll(currentOrganization.id);
+      const teamsData = await teamsService.getAll(currentOrganization.id);
+      const licensesData = await licensesService.getAll(currentOrganization.id);
       setPeople(peopleData);
       setTeams(teamsData);
       setLicenses(licensesData);
@@ -76,7 +76,7 @@ export const People = () => {
     loadData();
   }, [currentOrganization]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!currentOrganization) {
       toast({
         title: 'Erro!',
@@ -97,7 +97,7 @@ export const People = () => {
 
     try {
       if (editingPerson) {
-        peopleService.update(editingPerson.id, {
+        await peopleService.update(editingPerson.id, {
           name: formData.name,
           email: formData.email,
           position: formData.position,
@@ -110,7 +110,7 @@ export const People = () => {
           description: 'A pessoa foi atualizada com sucesso.',
         });
       } else {
-        peopleService.create({
+        await peopleService.create({
           name: formData.name,
           email: formData.email,
           position: formData.position,
@@ -152,9 +152,9 @@ export const People = () => {
     setDialogOpen(true);
   };
 
-  const handleDelete = (person: Person) => {
+  const handleDelete = async (person: Person) => {
     try {
-      peopleService.delete(person.id);
+      await peopleService.delete(person.id);
       toast({
         title: 'Pessoa excluída!',
         description: 'A pessoa foi excluída com sucesso.',
@@ -344,31 +344,6 @@ export const People = () => {
                   </SelectContent>
                 </Select>
               </div>
-              {/*<div>
-                <Label>Subordinados</Label>
-                <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
-                  {people
-                    .filter(person => person.id !== editingPerson?.id)
-                    .map((person) => (
-                      <div key={person.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`subordinate-${person.id}`}
-                          checked={formData.subordinates.includes(person.id)}
-                          onCheckedChange={(checked) => handleSubordinateChange(person.id, checked as boolean)}
-                        />
-                        <Label htmlFor={`subordinate-${person.id}`} className="text-sm">
-                          {person.name} - {person.position}
-                        </Label>
-                      </div>
-                    ))}
-                  {people.length <= 1 && (
-                    <p className="text-sm text-muted-foreground">
-                      Nenhuma pessoa disponível para ser subordinado.
-                    </p>
-                  )}
-                </div>
-              </div>
-              */}
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
@@ -411,8 +386,6 @@ export const People = () => {
                   <TableHead >Email</TableHead> 
                   <TableHead>Cargo</TableHead>
                   <TableHead>Time</TableHead>
-                  {/*<TableHead>Supervisor</TableHead>
-                  <TableHead>Subordinados</TableHead>*/}
                   <TableHead>Licenças</TableHead>
                   <TableHead>Ativos</TableHead>
                   <TableHead>Custo Total</TableHead>
@@ -443,9 +416,7 @@ export const People = () => {
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <Mail className="w-4 h-4 text-muted-foreground" />
-                          
                           <span>{person.email}</span>
-                          
                         </div>
                       </TableCell>
                       <TableCell>{person.position}</TableCell>
@@ -456,31 +427,6 @@ export const People = () => {
                           <span className="text-muted-foreground">Sem time</span>
                         )}
                       </TableCell>
-                      {/*
-                      <TableCell>
-                        {manager ? (
-                          <div className="flex items-center space-x-2">
-                            <UserCheck className="w-4 h-4 text-blue-500" />
-                            <span className="text-sm">{manager.name}</span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Users className="w-4 h-4 text-orange-500" />
-                          <span>{subordinatesCount}</span>
-                          {subordinatesCount > 0 && (
-                            <span className="text-sm text-muted-foreground">
-                              subordinado{subordinatesCount !== 1 ? 's' : ''}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-
-                      */}
-                      
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <Shield className="w-4 h-4" style={{ color: '#3b82f6' }} />
