@@ -12,11 +12,16 @@ class PersistentDatabase {
   private storageKey = 'app_database';
   private isServer = typeof window === 'undefined';
   private apiBase = '';
+  private cache: TableData | null = null;
+  private lastSync = 0;
+  private syncInterval = 5000; // 5 segundos
 
   constructor() {
     // Detectar se estamos no servidor (SSR) ou cliente
     if (typeof window !== 'undefined') {
       this.apiBase = window.location.origin;
+      // Tentar sincronizar periodicamente
+      setInterval(() => this.syncWithServer(), this.syncInterval);
     }
   }
 
@@ -37,8 +42,7 @@ class PersistentDatabase {
       return await response.json();
     } catch (error) {
       console.error('Database request error:', error);
-      // Fallback para localStorage em caso de erro
-      return this.getLocalData();
+      throw error;
     }
   }
 
@@ -51,28 +55,56 @@ class PersistentDatabase {
   private saveLocalData(data: TableData): void {
     if (typeof window === 'undefined') return;
     localStorage.setItem(this.storageKey, JSON.stringify(data));
+    this.cache = data;
   }
 
-  private async getData(): Promise<TableData> {
+  private async syncWithServer(): Promise<void> {
     try {
-      // Tentar buscar do servidor primeiro
       const serverData = await this.makeRequest('GET', '');
-      return serverData;
+      if (serverData && Object.keys(serverData).length > 0) {
+        this.saveLocalData(serverData);
+        console.log('Database synchronized with server');
+      }
     } catch (error) {
-      console.warn('Fallback to localStorage:', error);
-      return this.getLocalData();
+      console.warn('Failed to sync with server:', error);
     }
   }
 
-  private async saveData(data: TableData): Promise<void> {
+  private async getData(): Promise<TableData> {
+    // Usar cache se disponível e recente
+    if (this.cache && (Date.now() - this.lastSync) < 1000) {
+      return this.cache;
+    }
+
     try {
-      // Salvar no servidor
-      await this.makeRequest('POST', '', data);
-      // Também salvar localmente como backup
-      this.saveLocalData(data);
+      // Tentar buscar do servidor primeiro
+      const serverData = await this.makeRequest('GET', '');
+      if (serverData && Object.keys(serverData).length > 0) {
+        this.saveLocalData(serverData);
+        this.lastSync = Date.now();
+        return serverData;
+      }
     } catch (error) {
-      console.warn('Fallback to localStorage save:', error);
-      this.saveLocalData(data);
+      console.warn('Fallback to localStorage:', error);
+    }
+
+    // Fallback para localStorage
+    const localData = this.getLocalData();
+    this.cache = localData;
+    return localData;
+  }
+
+  private async saveData(data: TableData): Promise<void> {
+    // Salvar localmente primeiro
+    this.saveLocalData(data);
+    
+    try {
+      // Tentar salvar no servidor
+      await this.makeRequest('POST', '', data);
+      console.log('Data saved to server successfully');
+    } catch (error) {
+      console.warn('Failed to save to server, data saved locally:', error);
+      throw error;
     }
   }
 
@@ -99,7 +131,7 @@ class PersistentDatabase {
       },
       run: async (tableName: string, ...params: any[]) => {
         await this.ensureTable(tableName);
-        const data = await this.getData();
+        const data =await this.getData();
         if (!data[tableName]) {
           data[tableName] = [];
         }
@@ -130,16 +162,35 @@ class PersistentDatabase {
     data[tableName] = tableData;
     await this.saveData(data);
   }
+
+  // Método para forçar sincronização
+  async forceSync(): Promise<void> {
+    this.cache = null;
+    this.lastSync = 0;
+    await this.syncWithServer();
+  }
 }
 
 export const db = new PersistentDatabase();
 
 export const initDatabase = async () => {
   try {
+    console.log('Initializing database...');
+    
     // Tentar carregar dados do servidor
-    const serverData = await fetch('/api/database').then(res => res.json()).catch(() => null);
+    let serverData = null;
+    try {
+      const response = await fetch('/api/database');
+      if (response.ok) {
+        serverData = await response.json();
+      }
+    } catch (error) {
+      console.warn('Could not fetch from server, using localStorage:', error);
+    }
     
     if (!serverData || Object.keys(serverData).length === 0) {
+      console.log('No server data found, initializing with default data...');
+      
       // Se não há dados no servidor, inicializar com dados padrão
       const initialData: TableData = {
         organizations: [
@@ -168,24 +219,31 @@ export const initDatabase = async () => {
         inventory: []
       };
       
-      // Salvar dados iniciais no servidor
-      await fetch('/api/database', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(initialData)
-      }).catch(() => {
-        // Fallback para localStorage se servidor não disponível
+      // Salvar dados iniciais
+      try {
+        await fetch('/api/database', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(initialData)
+        });
+        console.log('Initial data saved to server');
+      } catch (error) {
+        console.warn('Failed to save initial data to server, using localStorage fallback:', error);
         localStorage.setItem('app_database', JSON.stringify(initialData));
-      });
+      }
+    } else {
+      // Sincronizar dados do servidor com localStorage
+      localStorage.setItem('app_database', JSON.stringify(serverData));
+      console.log('Database synchronized from server');
     }
     
     console.log('Database initialized successfully');
   } catch (error) {
-    console.warn('Database initialization error, using localStorage fallback:', error);
+    console.error('Database initialization error:', error);
     
-    // Fallback para localStorage
+    // Fallback completo para localStorage
     const data = localStorage.getItem('app_database');
     if (!data) {
       const initialData: TableData = {
@@ -216,8 +274,16 @@ export const initDatabase = async () => {
       };
       
       localStorage.setItem('app_database', JSON.stringify(initialData));
+      console.log('Fallback initialization complete');
     }
   }
 };
+
+// Garantir que a sincronização acontece ao carregar a página
+if (typeof window !== 'undefined') {
+  window.addEventListener('focus', () => {
+    db.forceSync();
+  });
+}
 
 export default db;

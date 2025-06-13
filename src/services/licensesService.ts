@@ -22,21 +22,6 @@ export interface UpdateLicenseData {
   vendor?: string;
 }
 
-// Helper para acessar dados do localStorage
-const getTableData = (tableName: string): any[] => {
-  const data = localStorage.getItem('app_database');
-  if (!data) return [];
-  const parsed = JSON.parse(data);
-  return parsed[tableName] || [];
-};
-
-const saveTableData = (tableName: string, tableData: any[]): void => {
-  const data = localStorage.getItem('app_database');
-  const parsed = data ? JSON.parse(data) : {};
-  parsed[tableName] = tableData;
-  localStorage.setItem('app_database', JSON.stringify(parsed));
-};
-
 const calculateLicenseStatus = (expirationDate: string): License['status'] => {
   const today = new Date();
   const expiration = new Date(expirationDate);
@@ -49,8 +34,8 @@ const calculateLicenseStatus = (expirationDate: string): License['status'] => {
 };
 
 export const licensesService = {
-  getAll: (organizationId: string): License[] => {
-    const licenses = getTableData('licenses');
+  getAll: async (organizationId: string): Promise<License[]> => {
+    const licenses = await db.getTableData('licenses');
     
     return licenses
       .filter(license => license.organization_id === organizationId)
@@ -72,8 +57,8 @@ export const licensesService = {
       .sort((a, b) => new Date(b.expirationDate).getTime() - new Date(a.expirationDate).getTime());
   },
 
-  getById: (id: string): License | null => {
-    const licenses = getTableData('licenses');
+  getById: async (id: string): Promise<License | null> => {
+    const licenses = await db.getTableData('licenses');
     const license = licenses.find(l => l.id === id);
     
     if (!license) return null;
@@ -95,11 +80,11 @@ export const licensesService = {
     };
   },
 
-  create: (data: CreateLicenseData): License => {
+  create: async (data: CreateLicenseData): Promise<License> => {
     const id = uuidv4();
     const now = new Date().toISOString();
     
-    const licenses = getTableData('licenses');
+    const licenses = await db.getTableData('licenses');
     const newLicense = {
       id,
       name: data.name,
@@ -117,7 +102,7 @@ export const licensesService = {
     };
     
     licenses.push(newLicense);
-    saveTableData('licenses', licenses);
+    await db.saveTableData('licenses', licenses);
     
     return {
       id,
@@ -135,8 +120,8 @@ export const licensesService = {
     };
   },
 
-  update: (id: string, data: UpdateLicenseData): void => {
-    const licenses = getTableData('licenses');
+  update: async (id: string, data: UpdateLicenseData): Promise<void> => {
+    const licenses = await db.getTableData('licenses');
     const licenseIndex = licenses.findIndex(l => l.id === id);
     
     if (licenseIndex === -1) return;
@@ -153,17 +138,17 @@ export const licensesService = {
     license.updated_at = now;
     
     licenses[licenseIndex] = license;
-    saveTableData('licenses', licenses);
+    await db.saveTableData('licenses', licenses);
   },
 
-  delete: (id: string): void => {
-    const licenses = getTableData('licenses');
+  delete: async (id: string): Promise<void> => {
+    const licenses = await db.getTableData('licenses');
     const filteredLicenses = licenses.filter(l => l.id !== id);
-    saveTableData('licenses', filteredLicenses);
+    await db.saveTableData('licenses', filteredLicenses);
   },
 
-  assignToUser: (licenseId: string, userId: string): void => {
-    const licenses = getTableData('licenses');
+  assignToUser: async (licenseId: string, userId: string): Promise<void> => {
+    const licenses = await db.getTableData('licenses');
     const licenseIndex = licenses.findIndex(l => l.id === licenseId);
     
     if (licenseIndex === -1) return;
@@ -178,12 +163,12 @@ export const licensesService = {
       license.updated_at = new Date().toISOString();
       
       licenses[licenseIndex] = license;
-      saveTableData('licenses', licenses);
+      await db.saveTableData('licenses', licenses);
     }
   },
 
-  unassignFromUser: (licenseId: string, userId: string): void => {
-    const licenses = getTableData('licenses');
+  unassignFromUser: async (licenseId: string, userId: string): Promise<void> => {
+    const licenses = await db.getTableData('licenses');
     const licenseIndex = licenses.findIndex(l => l.id === licenseId);
     
     if (licenseIndex === -1) return;
@@ -202,11 +187,11 @@ export const licensesService = {
     license.updated_at = new Date().toISOString();
     
     licenses[licenseIndex] = license;
-    saveTableData('licenses', licenses);
+    await db.saveTableData('licenses', licenses);
   },
 
-  updateLicenseCode: (licenseId: string, licenseCode: string): void => {
-    const licenses = getTableData('licenses');
+  updateLicenseCode: async (licenseId: string, licenseCode: string): Promise<void> => {
+    const licenses = await db.getTableData('licenses');
     const licenseIndex = licenses.findIndex(l => l.id === licenseId);
     
     if (licenseIndex === -1) return;
@@ -216,11 +201,11 @@ export const licensesService = {
     license.updated_at = new Date().toISOString();
     
     licenses[licenseIndex] = license;
-    saveTableData('licenses', licenses);
+    await db.saveTableData('licenses', licenses);
   },
 
-  updateIndividualCode: (licenseId: string, userId: string, code: string): void => {
-    const licenses = getTableData('licenses');
+  updateIndividualCode: async (licenseId: string, userId: string, code: string): Promise<void> => {
+    const licenses = await db.getTableData('licenses');
     const licenseIndex = licenses.findIndex(l => l.id === licenseId);
     
     if (licenseIndex === -1) return;
@@ -238,6 +223,6 @@ export const licensesService = {
     license.updated_at = new Date().toISOString();
     
     licenses[licenseIndex] = license;
-    saveTableData('licenses', licenses);
+    await db.saveTableData('licenses', licenses);
   }
 };

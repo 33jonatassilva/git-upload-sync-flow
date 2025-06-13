@@ -1,5 +1,6 @@
 
 import { v4 as uuidv4 } from 'uuid';
+import { db } from '@/lib/database';
 
 export interface InventoryItem {
   id: string;
@@ -32,24 +33,9 @@ export interface UpdateInventoryItemData {
   location?: string;
 }
 
-// Helper para acessar dados do localStorage
-const getTableData = (tableName: string): any[] => {
-  const data = localStorage.getItem('app_database');
-  if (!data) return [];
-  const parsed = JSON.parse(data);
-  return parsed[tableName] || [];
-};
-
-const saveTableData = (tableName: string, tableData: any[]): void => {
-  const data = localStorage.getItem('app_database');
-  const parsed = data ? JSON.parse(data) : {};
-  parsed[tableName] = tableData;
-  localStorage.setItem('app_database', JSON.stringify(parsed));
-};
-
 export const inventoryService = {
-  getAll: (organizationId: string): InventoryItem[] => {
-    const inventory = getTableData('inventory');
+  getAll: async (organizationId: string): Promise<InventoryItem[]> => {
+    const inventory = await db.getTableData('inventory');
     
     return inventory
       .filter(item => item.organization_id === organizationId)
@@ -67,8 +53,8 @@ export const inventoryService = {
       .sort((a, b) => a.name.localeCompare(b.name));
   },
 
-  getById: (id: string): InventoryItem | null => {
-    const inventory = getTableData('inventory');
+  getById: async (id: string): Promise<InventoryItem | null> => {
+    const inventory = await db.getTableData('inventory');
     const item = inventory.find(i => i.id === id);
     
     if (!item) return null;
@@ -86,11 +72,11 @@ export const inventoryService = {
     };
   },
 
-  create: (data: CreateInventoryItemData): InventoryItem => {
+  create: async (data: CreateInventoryItemData): Promise<InventoryItem> => {
     const id = uuidv4();
     const now = new Date().toISOString();
     
-    const inventory = getTableData('inventory');
+    const inventory = await db.getTableData('inventory');
     
     const newItem = {
       id,
@@ -106,7 +92,7 @@ export const inventoryService = {
     };
     
     inventory.push(newItem);
-    saveTableData('inventory', inventory);
+    await db.saveTableData('inventory', inventory);
     
     return {
       id,
@@ -121,8 +107,8 @@ export const inventoryService = {
     };
   },
 
-  update: (id: string, data: UpdateInventoryItemData): void => {
-    const inventory = getTableData('inventory');
+  update: async (id: string, data: UpdateInventoryItemData): Promise<void> => {
+    const inventory = await db.getTableData('inventory');
     const itemIndex = inventory.findIndex(i => i.id === id);
     
     if (itemIndex === -1) return;
@@ -139,12 +125,12 @@ export const inventoryService = {
     item.updated_at = now;
     
     inventory[itemIndex] = item;
-    saveTableData('inventory', inventory);
+    await db.saveTableData('inventory', inventory);
   },
 
-  delete: (id: string): void => {
-    const inventory = getTableData('inventory');
+  delete: async (id: string): Promise<void> => {
+    const inventory = await db.getTableData('inventory');
     const filteredInventory = inventory.filter(i => i.id !== id);
-    saveTableData('inventory', filteredInventory);
+    await db.saveTableData('inventory', filteredInventory);
   }
 };

@@ -1,4 +1,6 @@
 
+import { db } from '@/lib/database';
+
 export interface DatabaseExport {
   organizations: any[];
   teams: any[];
@@ -11,23 +13,27 @@ export interface DatabaseExport {
 }
 
 export const configService = {
-  exportDatabase: (): DatabaseExport => {
-    const data = localStorage.getItem('app_database');
-    const parsed = data ? JSON.parse(data) : {};
+  exportDatabase: async (): Promise<DatabaseExport> => {
+    const organizations = await db.getTableData('organizations');
+    const teams = await db.getTableData('teams');
+    const people = await db.getTableData('people');
+    const assets = await db.getTableData('assets');
+    const licenses = await db.getTableData('licenses');
+    const inventory = await db.getTableData('inventory');
     
     return {
-      organizations: parsed.organizations || [],
-      teams: parsed.teams || [],
-      people: parsed.people || [],
-      assets: parsed.assets || [],
-      licenses: parsed.licenses || [],
-      inventory: parsed.inventory || [],
+      organizations: organizations || [],
+      teams: teams || [],
+      people: people || [],
+      assets: assets || [],
+      licenses: licenses || [],
+      inventory: inventory || [],
       exportDate: new Date().toISOString(),
       version: '1.0.0'
     };
   },
 
-  importDatabase: (importData: DatabaseExport): boolean => {
+  importDatabase: async (importData: DatabaseExport): Promise<boolean> => {
     try {
       // Validar estrutura básica
       if (!importData.organizations || !Array.isArray(importData.organizations)) {
@@ -55,20 +61,16 @@ export const configService = {
       }
 
       // Fazer backup dos dados atuais
-      const currentData = localStorage.getItem('app_database');
-      localStorage.setItem('app_database_backup', currentData || '{}');
+      const currentData = await configService.exportDatabase();
+      localStorage.setItem('app_database_backup', JSON.stringify(currentData));
       
       // Importar novos dados
-      const newData = {
-        organizations: importData.organizations,
-        teams: importData.teams,
-        people: importData.people,
-        assets: importData.assets,
-        licenses: importData.licenses,
-        inventory: importData.inventory
-      };
-      
-      localStorage.setItem('app_database', JSON.stringify(newData));
+      await db.saveTableData('organizations', importData.organizations);
+      await db.saveTableData('teams', importData.teams);
+      await db.saveTableData('people', importData.people);
+      await db.saveTableData('assets', importData.assets);
+      await db.saveTableData('licenses', importData.licenses);
+      await db.saveTableData('inventory', importData.inventory);
       
       return true;
     } catch (error) {
@@ -77,28 +79,33 @@ export const configService = {
     }
   },
 
-  restoreBackup: (): boolean => {
+  restoreBackup: async (): Promise<boolean> => {
     try {
       const backupData = localStorage.getItem('app_database_backup');
       if (!backupData) {
         throw new Error('Nenhum backup encontrado');
       }
       
-      localStorage.setItem('app_database', backupData);
-      return true;
+      const parsedBackup = JSON.parse(backupData);
+      return await configService.importDatabase(parsedBackup);
     } catch (error) {
       console.error('Erro ao restaurar backup:', error);
       return false;
     }
   },
 
-  clearAllData: (): void => {
+  clearAllData: async (): Promise<void> => {
     // Fazer backup antes de limpar
-    const currentData = localStorage.getItem('app_database');
-    localStorage.setItem('app_database_backup', currentData || '{}');
+    const currentData = await configService.exportDatabase();
+    localStorage.setItem('app_database_backup', JSON.stringify(currentData));
     
     // Limpar dados
-    localStorage.removeItem('app_database');
+    await db.saveTableData('organizations', []);
+    await db.saveTableData('teams', []);
+    await db.saveTableData('people', []);
+    await db.saveTableData('assets', []);
+    await db.saveTableData('licenses', []);
+    await db.saveTableData('inventory', []);
   },
 
   downloadJsonFile: (data: any, filename: string): void => {

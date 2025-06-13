@@ -1,6 +1,7 @@
 
 import { Person } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
+import { db } from '@/lib/database';
 
 export interface CreatePersonData {
   name: string;
@@ -22,27 +23,12 @@ export interface UpdatePersonData {
   subordinates?: string[];
 }
 
-// Helper para acessar dados do localStorage
-const getTableData = (tableName: string): any[] => {
-  const data = localStorage.getItem('app_database');
-  if (!data) return [];
-  const parsed = JSON.parse(data);
-  return parsed[tableName] || [];
-};
-
-const saveTableData = (tableName: string, tableData: any[]): void => {
-  const data = localStorage.getItem('app_database');
-  const parsed = data ? JSON.parse(data) : {};
-  parsed[tableName] = tableData;
-  localStorage.setItem('app_database', JSON.stringify(parsed));
-};
-
 export const peopleService = {
-  getAll: (organizationId: string): Person[] => {
-    const people = getTableData('people');
-    const teams = getTableData('teams');
-    const assets = getTableData('assets');
-    const licenses = getTableData('licenses');
+  getAll: async (organizationId: string): Promise<Person[]> => {
+    const people = await db.getTableData('people');
+    const teams = await db.getTableData('teams');
+    const assets = await db.getTableData('assets');
+    const licenses = await db.getTableData('licenses');
     
     return people
       .filter(person => person.organization_id === organizationId)
@@ -102,9 +88,9 @@ export const peopleService = {
       .sort((a, b) => a.name.localeCompare(b.name));
   },
 
-  getById: (id: string): Person | null => {
-    const people = getTableData('people');
-    const teams = getTableData('teams');
+  getById: async (id: string): Promise<Person | null> => {
+    const people = await db.getTableData('people');
+    const teams = await db.getTableData('teams');
     const person = people.find(p => p.id === id);
     
     if (!person) return null;
@@ -128,12 +114,12 @@ export const peopleService = {
     };
   },
 
-  create: (data: CreatePersonData): Person => {
+  create: async (data: CreatePersonData): Promise<Person> => {
     const id = uuidv4();
     const now = new Date().toISOString();
     
-    const people = getTableData('people');
-    const teams = getTableData('teams');
+    const people = await db.getTableData('people');
+    const teams = await db.getTableData('teams');
     
     const team = data.teamId ? teams.find(t => t.id === data.teamId) : null;
     
@@ -152,7 +138,7 @@ export const peopleService = {
     };
     
     people.push(newPerson);
-    saveTableData('people', people);
+    await db.saveTableData('people', people);
     
     return {
       id,
@@ -171,8 +157,8 @@ export const peopleService = {
     };
   },
 
-  update: (id: string, data: UpdatePersonData): void => {
-    const people = getTableData('people');
+  update: async (id: string, data: UpdatePersonData): Promise<void> => {
+    const people = await db.getTableData('people');
     const personIndex = people.findIndex(p => p.id === id);
     
     if (personIndex === -1) return;
@@ -190,12 +176,12 @@ export const peopleService = {
     person.updated_at = now;
     
     people[personIndex] = person;
-    saveTableData('people', people);
+    await db.saveTableData('people', people);
   },
 
-  delete: (id: string): void => {
-    const people = getTableData('people');
+  delete: async (id: string): Promise<void> => {
+    const people = await db.getTableData('people');
     const filteredPeople = people.filter(p => p.id !== id);
-    saveTableData('people', filteredPeople);
+    await db.saveTableData('people', filteredPeople);
   }
 };
