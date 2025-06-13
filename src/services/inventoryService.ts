@@ -24,6 +24,12 @@ export interface UpdateInventoryItemData {
   supplier?: string;
 }
 
+const getItemStatus = (quantity: number, minQuantity: number): InventoryItem['status'] => {
+  if (quantity === 0) return 'out_of_stock';
+  if (quantity <= minQuantity) return 'available'; // Could be 'maintenance' based on business logic
+  return 'available';
+};
+
 export const inventoryService = {
   getAll: async (organizationId: string): Promise<InventoryItem[]> => {
     const items = await db.getTableData('inventory');
@@ -40,6 +46,7 @@ export const inventoryService = {
         organizationId: item.organization_id,
         costPerUnit: item.cost_per_unit,
         supplier: item.supplier,
+        status: getItemStatus(item.quantity, item.min_quantity),
         createdAt: item.created_at,
         updatedAt: item.updated_at
       }))
@@ -62,6 +69,7 @@ export const inventoryService = {
       organizationId: item.organization_id,
       costPerUnit: item.cost_per_unit,
       supplier: item.supplier,
+      status: getItemStatus(item.quantity, item.min_quantity),
       createdAt: item.created_at,
       updatedAt: item.updated_at
     };
@@ -99,6 +107,7 @@ export const inventoryService = {
       organizationId: data.organizationId,
       costPerUnit: data.costPerUnit,
       supplier: data.supplier,
+      status: getItemStatus(data.quantity, data.minQuantity),
       createdAt: now,
       updatedAt: now
     };
