@@ -4,9 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { License, Person } from '@/types';
 import { peopleService } from '@/services/peopleService';
 import { licensesService } from '@/services/licensesService';
@@ -30,13 +28,22 @@ export const ManageLicenseDialog = ({ license, open, onOpenChange, onUpdate }: M
   const [editingCode, setEditingCode] = useState<string | null>(null);
 
   useEffect(() => {
-    if (currentOrganization && open) {
-      const allPeople = peopleService.getAll(currentOrganization.id);
-      setPeople(allPeople);
-      setSelectedPeople(new Set(license.assignedTo));
-      setLicenseCode(license.licenseCode || '');
-      setIndividualCodes(license.individualCodes || {});
-    }
+    const loadData = async () => {
+      if (currentOrganization && open) {
+        try {
+          const allPeople = await peopleService.getAll(currentOrganization.id);
+          setPeople(allPeople);
+          setSelectedPeople(new Set(license.assignedTo));
+          setLicenseCode(license.licenseCode || '');
+          setIndividualCodes(license.individualCodes || {});
+        } catch (error) {
+          console.error('Error loading people:', error);
+          setPeople([]);
+        }
+      }
+    };
+    
+    loadData();
   }, [currentOrganization, open, license.assignedTo, license.licenseCode, license.individualCodes]);
 
   const handlePersonToggle = (personId: string) => {
@@ -64,40 +71,45 @@ export const ManageLicenseDialog = ({ license, open, onOpenChange, onUpdate }: M
     }));
   };
 
-  const handleSave = () => {
-    // Update license assignments
-    const currentAssigned = new Set(license.assignedTo);
-    const newAssigned = selectedPeople;
+  const handleSave = async () => {
+    try {
+      // Update license assignments
+      const currentAssigned = new Set(license.assignedTo);
+      const newAssigned = selectedPeople;
 
-    // Remove unassigned users
-    currentAssigned.forEach(userId => {
-      if (!newAssigned.has(userId)) {
-        licensesService.unassignFromUser(license.id, userId);
+      // Remove unassigned users
+      for (const userId of currentAssigned) {
+        if (!newAssigned.has(userId)) {
+          await licensesService.unassignFromUser(license.id, userId);
+        }
       }
-    });
 
-    // Add newly assigned users
-    newAssigned.forEach(userId => {
-      if (!currentAssigned.has(userId)) {
-        licensesService.assignToUser(license.id, userId);
+      // Add newly assigned users
+      for (const userId of newAssigned) {
+        if (!currentAssigned.has(userId)) {
+          await licensesService.assignToUser(license.id, userId);
+        }
       }
-    });
 
-    // Update license code if provided
-    if (licenseCode.trim()) {
-      licensesService.updateLicenseCode(license.id, licenseCode.trim());
+      // Update license code if provided
+      if (licenseCode.trim()) {
+        await licensesService.updateLicenseCode(license.id, licenseCode.trim());
+      }
+
+      // Update individual codes
+      for (const [userId, code] of Object.entries(individualCodes)) {
+        if (newAssigned.has(userId)) {
+          await licensesService.updateIndividualCode(license.id, userId, code);
+        }
+      }
+
+      toast.success('Atribuições atualizadas com sucesso!');
+      onUpdate();
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error saving license assignments:', error);
+      toast.error('Erro ao salvar atribuições');
     }
-
-    // Update individual codes
-    Object.entries(individualCodes).forEach(([userId, code]) => {
-      if (newAssigned.has(userId)) {
-        licensesService.updateIndividualCode(license.id, userId, code);
-      }
-    });
-
-    toast.success('Atribuições atualizadas com sucesso!');
-    onUpdate();
-    onOpenChange(false);
   };
 
   const assignedPeople = people.filter(person => selectedPeople.has(person.id));

@@ -36,11 +36,21 @@ export const PersonHierarchy = ({ selectedPersonId, onPersonSelect }: PersonHier
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (currentOrganization) {
-      const allPeople = peopleService.getAll(currentOrganization.id);
-      setPeople(allPeople);
-      buildHierarchy(allPeople);
-    }
+    const loadData = async () => {
+      if (currentOrganization) {
+        try {
+          const allPeople = await peopleService.getAll(currentOrganization.id);
+          setPeople(allPeople);
+          buildHierarchy(allPeople);
+        } catch (error) {
+          console.error('Error loading people:', error);
+          setPeople([]);
+          setHierarchyTree([]);
+        }
+      }
+    };
+    
+    loadData();
   }, [currentOrganization]);
 
   const buildHierarchy = (peopleList: Person[]) => {
