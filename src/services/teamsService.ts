@@ -1,7 +1,7 @@
 
-import { db } from '@/lib/database';
 import { Team } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
+import { db } from '@/lib/database';
 
 export interface CreateTeamData {
   name: string;
@@ -16,25 +16,10 @@ export interface UpdateTeamData {
   managerId?: string;
 }
 
-// Helper para acessar dados do localStorage
-const getTableData = (tableName: string): any[] => {
-  const data = localStorage.getItem('app_database');
-  if (!data) return [];
-  const parsed = JSON.parse(data);
-  return parsed[tableName] || [];
-};
-
-const saveTableData = (tableName: string, tableData: any[]): void => {
-  const data = localStorage.getItem('app_database');
-  const parsed = data ? JSON.parse(data) : {};
-  parsed[tableName] = tableData;
-  localStorage.setItem('app_database', JSON.stringify(parsed));
-};
-
 export const teamsService = {
-  getAll: (organizationId: string): Team[] => {
-    const teams = getTableData('teams');
-    const people = getTableData('people');
+  getAll: async (organizationId: string): Promise<Team[]> => {
+    const teams = await db.getTableData('teams');
+    const people = await db.getTableData('people');
     
     return teams
       .filter(team => team.organization_id === organizationId)
@@ -56,9 +41,9 @@ export const teamsService = {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 
-  getById: (id: string): Team | null => {
-    const teams = getTableData('teams');
-    const people = getTableData('people');
+  getById: async (id: string): Promise<Team | null> => {
+    const teams = await db.getTableData('teams');
+    const people = await db.getTableData('people');
     
     const team = teams.find(team => team.id === id);
     if (!team) return null;
@@ -78,11 +63,11 @@ export const teamsService = {
     };
   },
 
-  create: (data: CreateTeamData): Team => {
+  create: async (data: CreateTeamData): Promise<Team> => {
     const id = uuidv4();
     const now = new Date().toISOString();
     
-    const teams = getTableData('teams');
+    const teams = await db.getTableData('teams');
     const newTeam = {
       id,
       name: data.name,
@@ -94,7 +79,7 @@ export const teamsService = {
     };
     
     teams.push(newTeam);
-    saveTableData('teams', teams);
+    await db.saveTableData('teams', teams);
     
     return {
       id,
@@ -107,8 +92,8 @@ export const teamsService = {
     };
   },
 
-  update: (id: string, data: UpdateTeamData): void => {
-    const teams = getTableData('teams');
+  update: async (id: string, data: UpdateTeamData): Promise<void> => {
+    const teams = await db.getTableData('teams');
     const teamIndex = teams.findIndex(team => team.id === id);
     
     if (teamIndex === -1) return;
@@ -122,49 +107,49 @@ export const teamsService = {
     team.updated_at = now;
     
     teams[teamIndex] = team;
-    saveTableData('teams', teams);
+    await db.saveTableData('teams', teams);
   },
 
-  delete: (id: string): void => {
+  delete: async (id: string): Promise<void> => {
     // First, update people to remove team association
-    const people = getTableData('people');
+    const people = await db.getTableData('people');
     const updatedPeople = people.map(person => {
       if (person.team_id === id) {
         return { ...person, team_id: null };
       }
       return person;
     });
-    saveTableData('people', updatedPeople);
+    await db.saveTableData('people', updatedPeople);
     
     // Then delete the team
-    const teams = getTableData('teams');
+    const teams = await db.getTableData('teams');
     const filteredTeams = teams.filter(team => team.id !== id);
-    saveTableData('teams', filteredTeams);
+    await db.saveTableData('teams', filteredTeams);
   },
 
-  addPersonToTeam: (teamId: string, personId: string): void => {
-    const people = getTableData('people');
+  addPersonToTeam: async (teamId: string, personId: string): Promise<void> => {
+    const people = await db.getTableData('people');
     const personIndex = people.findIndex(person => person.id === personId);
     
     if (personIndex !== -1) {
       people[personIndex].team_id = teamId;
-      saveTableData('people', people);
+      await db.saveTableData('people', people);
     }
   },
 
-  removePersonFromTeam: (personId: string): void => {
-    const people = getTableData('people');
+  removePersonFromTeam: async (personId: string): Promise<void> => {
+    const people = await db.getTableData('people');
     const personIndex = people.findIndex(person => person.id === personId);
     
     if (personIndex !== -1) {
       people[personIndex].team_id = null;
-      saveTableData('people', people);
+      await db.saveTableData('people', people);
     }
   },
 
-  getTeamMembers: (teamId: string) => {
-    const people = getTableData('people');
-    const teams = getTableData('teams');
+  getTeamMembers: async (teamId: string) => {
+    const people = await db.getTableData('people');
+    const teams = await db.getTableData('teams');
     
     return people
       .filter(person => person.team_id === teamId && person.status === 'active')

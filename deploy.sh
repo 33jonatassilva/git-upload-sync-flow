@@ -1,35 +1,29 @@
 
 #!/bin/bash
+echo "========================================"
+echo " Iniciando Deploy de Producao"
+echo "========================================"
 
-echo "🚀 Iniciando deploy do Infra Tools..."
-
-# Verificar se Docker está rodando
-if ! docker info >/dev/null 2>&1; then
-    echo "❌ Docker não está rodando. Por favor, inicie o Docker primeiro."
-    exit 1
-fi
-
-# Parar containers existentes
-echo "🛑 Parando containers existentes..."
+echo "Parando containers existentes..."
 docker-compose down
 
-# Limpar imagens antigas (opcional)
-read -p "Deseja limpar imagens antigas? (y/N): " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "🧹 Limpando imagens antigas..."
-    docker system prune -f
-fi
+echo "Removendo imagens antigas..."
+docker-compose build --no-cache
 
-# Build e start dos containers
-echo "🔨 Fazendo build e iniciando containers..."
-docker-compose up --build -d
+echo "Iniciando aplicacao em modo producao..."
+docker-compose up -d
 
-# Verificar se os containers estão rodando
-echo "🔍 Verificando status dos containers..."
+echo "Aguardando inicializacao..."
+sleep 30
+
+echo "Verificando status da aplicacao..."
 docker-compose ps
 
-echo "✅ Deploy concluído!"
-echo "📱 Aplicação disponível em: http://localhost:8080"
-echo "📊 Para ver logs: docker-compose logs -f app"
-echo "🛑 Para parar: docker-compose down"
+echo ""
+echo "========================================"
+echo " Deploy concluido!"
+echo " Aplicacao disponivel em: http://localhost:8080"
+echo "========================================"
+
+echo "Exibindo logs da aplicacao..."
+docker-compose logs -f app

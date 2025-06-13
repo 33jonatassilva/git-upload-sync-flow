@@ -1,6 +1,7 @@
 
 import { Asset } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
+import { db } from '@/lib/database';
 
 export interface CreateAssetData {
   name: string;
@@ -25,25 +26,10 @@ export interface UpdateAssetData {
   condition?: Asset['condition'];
 }
 
-// Helper para acessar dados do localStorage
-const getTableData = (tableName: string): any[] => {
-  const data = localStorage.getItem('app_database');
-  if (!data) return [];
-  const parsed = JSON.parse(data);
-  return parsed[tableName] || [];
-};
-
-const saveTableData = (tableName: string, tableData: any[]): void => {
-  const data = localStorage.getItem('app_database');
-  const parsed = data ? JSON.parse(data) : {};
-  parsed[tableName] = tableData;
-  localStorage.setItem('app_database', JSON.stringify(parsed));
-};
-
 export const assetsService = {
-  getAll: (organizationId: string): Asset[] => {
-    const assets = getTableData('assets');
-    const people = getTableData('people');
+  getAll: async (organizationId: string): Promise<Asset[]> => {
+    const assets = await db.getTableData('assets');
+    const people = await db.getTableData('people');
     
     return assets
       .filter(asset => asset.organization_id === organizationId)
@@ -67,9 +53,9 @@ export const assetsService = {
       .sort((a, b) => a.name.localeCompare(b.name));
   },
 
-  getById: (id: string): Asset | null => {
-    const assets = getTableData('assets');
-    const people = getTableData('people');
+  getById: async (id: string): Promise<Asset | null> => {
+    const assets = await db.getTableData('assets');
+    const people = await db.getTableData('people');
     const asset = assets.find(a => a.id === id);
     
     if (!asset) return null;
@@ -91,12 +77,12 @@ export const assetsService = {
     };
   },
 
-  create: (data: CreateAssetData): Asset => {
+  create: async (data: CreateAssetData): Promise<Asset> => {
     const id = uuidv4();
     const now = new Date().toISOString();
     
-    const assets = getTableData('assets');
-    const people = getTableData('people');
+    const assets = await db.getTableData('assets');
+    const people = await db.getTableData('people');
     
     const assignedPerson = data.assignedTo ? people.find(p => p.id === data.assignedTo) : null;
     
@@ -116,7 +102,7 @@ export const assetsService = {
     };
     
     assets.push(newAsset);
-    saveTableData('assets', assets);
+    await db.saveTableData('assets', assets);
     
     return {
       id,
@@ -133,8 +119,8 @@ export const assetsService = {
     };
   },
 
-  update: (id: string, data: UpdateAssetData): void => {
-    const assets = getTableData('assets');
+  update: async (id: string, data: UpdateAssetData): Promise<void> => {
+    const assets = await db.getTableData('assets');
     const assetIndex = assets.findIndex(a => a.id === id);
     
     if (assetIndex === -1) return;
@@ -153,12 +139,12 @@ export const assetsService = {
     asset.updated_at = now;
     
     assets[assetIndex] = asset;
-    saveTableData('assets', assets);
+    await db.saveTableData('assets', assets);
   },
 
-  delete: (id: string): void => {
-    const assets = getTableData('assets');
+  delete: async (id: string): Promise<void> => {
+    const assets = await db.getTableData('assets');
     const filteredAssets = assets.filter(a => a.id !== id);
-    saveTableData('assets', filteredAssets);
+    await db.saveTableData('assets', filteredAssets);
   }
 };

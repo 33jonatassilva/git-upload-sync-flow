@@ -50,49 +50,58 @@ export const Dashboard = () => {
   useEffect(() => {
     if (!currentOrganization) return;
 
-    const loadDashboardData = () => {
-      // Buscar dados reais dos serviços
-      const people = peopleService.getAll(currentOrganization.id);
-      const licenses = licensesService.getAll(currentOrganization.id);
-      const assets = assetsService.getAll(currentOrganization.id);
-      
-      // Buscar times do localStorage
-      const data = localStorage.getItem('app_database');
-      const teams = data ? JSON.parse(data).teams?.filter((t: any) => t.organization_id === currentOrganization.id) || [] : [];
+    const loadDashboardData = async () => {
+      try {
+        // Aguardar dados reais dos serviços
+        const people = await peopleService.getAll(currentOrganization.id);
+        const licenses = await licensesService.getAll(currentOrganization.id);
+        const assets = await assetsService.getAll(currentOrganization.id);
+        
+        // Buscar times do localStorage
+        const data = localStorage.getItem('app_database');
+        const teams = data ? JSON.parse(data).teams?.filter((t: any) => t.organization_id === currentOrganization.id) || [] : [];
 
-      // Calcular estatísticas
-      const activePeople = people.filter(p => p.status === 'active');
-      const expiring = licenses.filter(license => {
-        return license.status === 'expired' || license.status === 'expiring_soon';
-      });
-      const availableAssets = assets.filter(a => a.status === 'available');
+        // Calcular estatísticas
+        const activePeople = people.filter(p => p.status === 'active');
+        const expiring = licenses.filter(license => {
+          return license.status === 'expired' || license.status === 'expiring_soon';
+        });
+        const availableAssets = assets.filter(a => a.status === 'available');
 
-      setStats({
-        totalPeople: people.length,
-        activePeople: activePeople.length,
-        totalLicenses: licenses.length,
-        expiringLicenses: expiring.length,
-        totalAssets: assets.length,
-        availableAssets: availableAssets.length,
-        totalTeams: teams.length
-      });
+        setStats({
+          totalPeople: people.length,
+          activePeople: activePeople.length,
+          totalLicenses: licenses.length,
+          expiringLicenses: expiring.length,
+          totalAssets: assets.length,
+          availableAssets: availableAssets.length,
+          totalTeams: teams.length
+        });
 
-      // Definir dados recentes (ordenar por data de criação)
-      const sortedPeople = [...activePeople].sort((a, b) => 
-        new Date(b.entryDate).getTime() - new Date(a.entryDate).getTime()
-      );
-      
-      const sortedAssets = [...assets].sort((a, b) => 
-        new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()
-      );
+        // Definir dados recentes (ordenar por data de criação)
+        const sortedPeople = [...activePeople].sort((a, b) => 
+          new Date(b.entryDate).getTime() - new Date(a.entryDate).getTime()
+        );
+        
+        const sortedAssets = [...assets].sort((a, b) => 
+          new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()
+        );
 
-      setExpiringLicenses(expiring.slice(0, 5));
-      setRecentAssets(sortedAssets.slice(0, 5));
-      setRecentPeople(sortedPeople.slice(0, 5));
+        setExpiringLicenses(expiring.slice(0, 5));
+        setRecentAssets(sortedAssets.slice(0, 5));
+        setRecentPeople(sortedPeople.slice(0, 5));
+      } catch (error) {
+        console.error('Erro ao carregar dados do dashboard:', error);
+        toast({
+          title: 'Erro',
+          description: 'Erro ao carregar dados do dashboard',
+          variant: 'destructive'
+        });
+      }
     };
 
     loadDashboardData();
-  }, [currentOrganization]);
+  }, [currentOrganization, toast]);
 
   const handleQuickAction = (action: string) => {
     // Navigate to respective pages
