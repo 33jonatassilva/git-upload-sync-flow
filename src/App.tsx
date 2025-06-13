@@ -35,10 +35,14 @@ const App = () => (
             <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
               <Route path="organizations" element={<Organizations />} />
-              <Route path="teams" element={<Teams />} />
-              <Route path="teams/:id" element={<TeamDetails />} />
-              <Route path="people" element={<People />} />
-              <Route path="people/:id" element={<PersonDetails />} />
+              <Route path="teams">
+                <Route index element={<Teams />} />
+                <Route path=":id" element={<TeamDetails />} />
+              </Route>
+              <Route path="people">
+                <Route index element={<People />} />
+                <Route path=":id" element={<PersonDetails />} />
+              </Route>
               <Route path="licenses" element={<Licenses />} />
               <Route path="assets" element={<Assets />} />
               <Route path="inventory" element={<Inventory />} />
